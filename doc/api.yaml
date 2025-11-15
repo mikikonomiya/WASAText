@@ -40,6 +40,38 @@ paths:
                     example: "abcdef012345"
         "400":
           description: Invalid username, length out of range
+  /users:
+    get:
+      tags: ["user"]
+      summary: List all WASAText users or search by username
+      description: |
+        If the 'username' parameter is provided in the query, 
+        it searches for a WASAText user with that name.
+        Otherwise, it returns a list of all existing users, 
+        sorted in alphabetical order.
+      operationId: searchUsers
+      parameters:
+        - name: username
+          in: query
+          required: false
+          schema: 
+            type: string
+          description: Search query to filter users by username.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of users retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Username Not Found.
   /user/name:
     put:
       tags: ["user"]
@@ -70,9 +102,7 @@ paths:
         "400":
           description: Invalid username (length out of range).
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header)
+          $ref: "#/components/responses/UnauthorizedError"
         "409":
           description: The new username is already in use.
   /user/photo:
@@ -104,9 +134,7 @@ paths:
         "400":
           description: Invalid request.
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
   /user/groups/{groupId}:
     parameters:
       - name: groupId
@@ -129,9 +157,7 @@ paths:
         "204":
           description: Successfully left the group (No content returned).
         "401":
-          description: |
-              Unauthorized (missing or invalid identifier in
-              the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: Group not found.
   /conversations:
@@ -154,9 +180,53 @@ paths:
                 items:
                   $ref: "#/components/schemas/conversation"
         "401":
-          description: |
-              Unauthorized (missing or invalid identifier in
-              the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
+    post:
+      tags: ["conversations"]
+      summary: Start a new one-to-one conversation
+      description: | 
+        Starts a new conversation with a specific user
+        if one doesnt already exist.
+        Otherwise, it returns the id of the existing conversation.
+      operationId: startConversation
+      security:
+        - BearerAuth: []
+      requestBody:
+        description: Username of the target user.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetUsername:
+                  type: string
+                  description: Username of the user to start the conversation with.
+      responses:
+        "200":
+          description: Conversation already exists; returns the existing id.
+          content:
+            applications/json:
+              schema:
+                type: object
+                properties:
+                  conversationId:
+                    type: string
+                    example: "abcs56837"
+        "201":
+          description: Conversation successfully created or retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversationId:
+                    type: string
+                    example: "bbcd02345"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Target User Not Found.
   /conversations/{conversationId}:
     get:
       parameters:
@@ -165,9 +235,8 @@ paths:
           required: true
           description: this is the conversation id.
           schema:
-            type: integer
-            description: |
-              an incremental number for each game instance
+            type: string
+            example: "absc55459"
       tags: ["conversations"]
       summary: Get the messages of a specific conversation.
       description: | 
@@ -186,11 +255,33 @@ paths:
                 items:
                   $ref: "#/components/schemas/message"
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: Conversation Not Found. 
+    delete: 
+      tags: ["conversations"]
+      summary: Delete a conversation history (for me)
+      description: |
+        Deletes the entire conversation history only for the authenticated user.
+        If its a group, the member will still be a group member.
+      operationId: deleteConversation
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The ID of the conversation.
+          schema:
+            type: string
+            example: "abcdef012345"
+      responses:
+        "204":
+          description: Conversation history deleted successfully (No Content).
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Conversation Not Found.
   /conversations/{conversationId}/messages:
     post:
       parameters:
@@ -202,15 +293,14 @@ paths:
             type: string
             example: "abcdef012345"
       tags: ["messages", "conversations"]
-      summary: Send a new text or photo message.
+      summary: Send a new text message.
       description: | 
-        Send a new text or photo message and return
-        the identifier (messageId)
+        Send a new text and return the identifier (messageId)
       operationId: sendMessage
       security:
         - BearerAuth: []
       requestBody:
-        description: Message content (text or photo file reference)
+        description: Message content (text)
         content:
           application/json:
             schema:
@@ -233,11 +323,131 @@ paths:
                     example: "abcdef012345"
 
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: Conversation Not Found. 
+  /conversations/{conversationId}/photos:
+    post:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The id of the conversation.
+          schema:
+            type: string
+            example: "absbf5593"
+      tags: ["messages", "conversations"]
+      summary: Send a new photo message.
+      description: Uploads and sends a new photo message to the conversation.
+      operationId: sendPhotoMessage
+      security:
+        - BearerAuth: []
+      requestBody:
+        description: The image file to be uploaded.
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary 
+                  description: The image file (e.g., JPEG or PNG) to upload.
+      responses:
+        "201":
+          description: Photo message successfully sent.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Conversation Not Found.
+    get:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The unique identifier of the conversation.
+          schema:
+            type: string
+            example: "abcdef012345"
+      tags: ["conversations"]
+      summary: Get conversation photo gallery
+      description: Retrieves a list of all photo messages (as a gallery) sent within a specific conversation.
+      operationId: getConvPhotos
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Photo gallery URLs retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: url
+                  description: URL of the photo message.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Conversation Not Found.
+  /conversations/{conversationId}/messages/starred:
+    get:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The unique identifier of the conversation.
+          schema:
+            type: string
+            example: "abcdef012345"
+      tags: ["messages", "conversations"]
+      summary: Get all starred messages in a specific conversation.
+      description: Retrieves a list of messages starred by the authenticated user within the given conversation.
+      operationId: getConvStarredMessages
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Starred messages retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/message"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Conversation Not Found.
+  /messages:
+    get:
+      tags: ["messages"]
+      summary: Search messages by content.
+      description: |
+        Search for text messages containing the query string 
+        (among all conversations of the authorized user).
+      operationId: searchMessages
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: textMessage
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search term to filter message content.
+      responses:
+        "200":
+          description: List of matching messages retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/message"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /messages/forwarded:
     post:
       tags: ["messages"]
@@ -268,12 +478,76 @@ paths:
         "201":
           description: Message forwarded successfully.
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: | 
             Source message or destination conversation not found. 
+  /messages/starred:
+    get: 
+      tags: ["messages"]
+      summary: Get all starred messages.
+      description: Retrieves a list of all messages starred by the authenticated user.
+      operationId: getAllStarredMessages
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Starred messages retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/message"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /messages/{messageId}/star:
+    put:
+      tags: ["messages"]
+      summary: Star a message
+      description: Marks a specific message as starred for the authenticated user.
+      operationId: starMessage
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          description: The id of the message to star.
+          schema:
+            type: string
+            example: "abcdef012345"
+      responses:
+        "204":
+          description: Message successfully starred (No Content).
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Message Not Found.
+    delete: 
+      tags: ["messages"]
+      summary: Unstar a message
+      description: | 
+        Removes the star marking from a specific message for 
+        the authenticated user.
+      operationId: unstarMessage
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          description: The unique identifier of the message to unstar.
+          schema:
+            type: string
+            example: "abcdef012345"
+      responses:
+        "204":
+          description: Star successfully removed (No Content).
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Message not found or Message wasn't starred.
   /messages/{messageId}/reactions/me:
     parameters:
           - name: messageId
@@ -310,9 +584,7 @@ paths:
         "201":
           description: Reaction created successfully.
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: Message Not Found.
     delete:
@@ -328,9 +600,7 @@ paths:
           description: | 
             Reaction removed successfully (No Content Returned).
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: |
             Message not found or user's reaction not found.
@@ -364,9 +634,7 @@ paths:
         "204":
           description: Message deleted successfully (No Content)
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "403":
           description: |
             Forbidden (Authenticated user is not the sender 
@@ -374,6 +642,54 @@ paths:
         "404":
           description: |
             Message not found or user's reaction not found.
+  /groups:
+    post: 
+      tags: ["groups"]
+      summary: Create a new group chat
+      description: Creates a new group by inserting a name and the list of members.
+      operationId: createGroup
+      security:
+        - BearerAuth: []
+      requestBody:
+        description: Group details (name and members).
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                groupName:
+                  type: string
+                  description: The desired name for the new group.
+                  example: Study Group
+                  minLength: 3
+                  maxLength: 16
+                memberUsernames:
+                  type: array
+                  description: | 
+                    List of usernames to invite to the group 
+                    (excluding the creator).
+                  items:
+                    type: string
+                    example: Maria
+              required:
+                - groupName
+                - memberUsernames
+      responses:
+        "200":
+          description: Group successfully created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groupId:
+                    type: string
+                    example: "abcsh3478"
+        "400":
+          description: Bad Request (Invalid group name or member list).
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /groups/{groupId}/participants:
     post:
       parameters:
@@ -417,9 +733,7 @@ paths:
           description: |
             Bad Request (username format is invalid)
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header).
+          $ref: "#/components/responses/UnauthorizedError"
         "403":
           description: |
             Forbidden (Authenticated user is not a member 
@@ -468,9 +782,7 @@ paths:
         "400":
           description: Invalid group name (length out of range).
         "401":
-          description: |
-            Unauthorized (missing or invalid identifier in
-            the Authorization header)
+          $ref: "#/components/responses/UnauthorizedError"
         "403":
           description: |
             Forbidden (Authenticated user is not a member 
@@ -535,7 +847,23 @@ components:
       scheme: bearer
       bearerFormat: User Identifier
   
+  responses:
+    UnauthorizedError:
+      description: |
+        Unauthorized (Missing or invalid identifier 
+        in Authorization header).
+  
   schemas:
+    User:
+      type: object
+      description: details about a single WASAText user.
+      properties:
+        username:
+          type: string
+          example: Marco
+        photoURL:
+          type: string
+          format: url
     conversation:
       type: object
       description: |
@@ -610,4 +938,8 @@ components:
                 type: string
               username:
                 type: string
-               
+        isStarred:
+          type: boolean
+          description: |
+            True if the user has marked has marked
+            this message as starred. False otherwise.
