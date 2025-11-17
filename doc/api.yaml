@@ -13,14 +13,14 @@ tags:
     description: managing group chats
   - name: conversations
     description: |
-      managing all conversations 
+      managing all conversations
       (group chats and one-to-one chats)
   - name: messages
     description: text or photo messages
 
 paths:
   /session:
-    post: 
+    post:
       tags: ["login"]
       summary: Logs in the user
       description: |-
@@ -54,27 +54,26 @@ paths:
                     type: string
                     example: "abcdef012345"
         "400":
-          $ref: "#/components/responses/BadRequestError"
-
+          $ref: "#/components/responses/BadRequestError" 
   /users:
     get:
       tags: ["user"]
       summary: List all WASAText users or search by username
       description: |
-        If the 'username' parameter is provided in the query, 
+        If the 'username' parameter is provided in the query,
         it searches for a WASAText user with that name.
-        Otherwise, it returns a list of all existing users, 
+        Otherwise, it returns a list of all existing users,
         sorted in alphabetical order.
       operationId: searchUsers
-      security:
-        - BearerAuth: []
       parameters:
         - name: username
           in: query
           required: false
-          schema: 
+          schema:
             type: string
           description: Search query to filter users by username.
+      security:
+        - BearerAuth: []
       responses:
         "200":
           description: List of users retrieved successfully.
@@ -87,14 +86,17 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError" 
-
+          description: Username Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /user/name:
     put:
       tags: ["user"]
       summary: Change username
       description: |
-        The authenticated user can update their username, 
+        The authenticated user can update their username,
         if the new username is not already in use.
       operationId: setMyUserName
       security:
@@ -122,14 +124,13 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "409":
           description: The new username is already in use.
-  
   /user/photo:
     put:
       tags: ["user"]
       summary: Change profile picture
       description: |
         The authenticated user can update their profile picture
-      operationId: setMyPhoto      
+      operationId: setMyPhoto
       security:
         - BearerAuth: []
       requestBody:
@@ -142,22 +143,23 @@ paths:
               properties:
                 photo:
                   type: string
-                  format: binary 
-                  description: The image file (e.g., JPEG or PNG) to upload as profile picture
+                  format: binary
+                  description: |
+                    The image file (e.g., JPEG or PNG) to upload as
+                    profile picture
       responses:
         "204":
           description: Profile picture updated successfully (No Content).
         "400":
-          description: Invalid request.
+          $ref: "#/components/responses/BadRequestError" 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-
   /user/groups/{groupId}:
-    parameters: 
+    parameters:
       - name: groupId
         in: path
         required: true
-        description: The unique identifier of the group.
+        description: this is the group Id
         schema:
           type: string
           example: "abcdef012345"
@@ -165,8 +167,9 @@ paths:
       tags: ["groups"]
       summary: Leave group
       description: |
-        Allows the authenticated user to leave a group they are a member of.
-      operationId: leaveGroup      
+        Allows the authenticated user to leave a group
+        they are a member of.
+      operationId: leaveGroup
       security:
         - BearerAuth: []
       responses:
@@ -175,14 +178,17 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: Group not found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /conversations:
     get:
       tags: ["conversations"]
       summary: Retrieve the list of all user's conversations
       description: |
-        Get a list al all one-on-one conversations and group chats, 
+        Get a list al all one-on-one conversations and group chats,
         sorted in reversed chronological order.
       operationId: getMyConversations
       security:
@@ -201,8 +207,9 @@ paths:
     post:
       tags: ["conversations"]
       summary: Start a new one-to-one conversation
-      description: | 
-        Starts a new conversation with a specific user if one doesnt already exist.
+      description: |
+        Starts a new conversation with a specific user
+        if one doesnt already exist.
         Otherwise, it returns the id of the existing conversation.
       operationId: startConversation
       security:
@@ -230,7 +237,7 @@ paths:
                     type: string
                     example: "abcs56837"
         "201":
-          description: Conversation successfully created.
+          description: Conversation successfully created or retrieved.
           content:
             application/json:
               schema:
@@ -243,21 +250,24 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: Target User Not Found.
-
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /conversations/{conversationId}:
-    parameters:
-      - name: conversationId
-        in: path
-        required: true
-        description: The unique identifier of the conversation.
-        schema:
-          type: string
-          example: "absc55459"
     get:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: this is the conversation id.
+          schema:
+            type: string
+            example: "absc55459"
       tags: ["conversations"]
       summary: Get the messages of a specific conversation.
-      description: | 
-        Get all exchanged messages for the given conversation, 
+      description: |
+        Get all exchanged messages for the given conversation,
         in reversed chronological order.
       operationId: getConversation
       security:
@@ -274,8 +284,12 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-    delete: 
+          description: Conversation Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
+    delete:
       tags: ["conversations"]
       summary: Delete a conversation history (for me)
       description: |
@@ -284,19 +298,38 @@ paths:
       operationId: deleteConversation
       security:
         - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The ID of the conversation.
+          schema:
+            type: string
+            example: "abcdef012345"
       responses:
         "204":
           description: Conversation history deleted successfully (No Content).
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: Conversation Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /conversations/{conversationId}/messages:
     post:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: this is the conversation id.
+          schema:
+            type: string
+            example: "abcdef012345"
       tags: ["messages", "conversations"]
       summary: Send a new text message.
-      description: | 
+      description: |
         Send a new text and return the identifier (messageId)
       operationId: sendMessage
       security:
@@ -312,7 +345,9 @@ paths:
                   type: string
                   description: The text content of the message.
                   minLength: 1
-                  maxLength: 1000 
+                  maxLength: 1000
+                  pattern: '^\s*[\s\S]*$'
+        required: true
       responses:
         "200":
           description: Message sent successfully.
@@ -327,10 +362,21 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: Conversation Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /conversations/{conversationId}/photos:
     post:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The id of the conversation.
+          schema:
+            type: string
+            example: "absbf5593"
       tags: ["messages", "conversations"]
       summary: Send a new photo message.
       description: Uploads and sends a new photo message to the conversation.
@@ -347,7 +393,7 @@ paths:
               properties:
                 photo:
                   type: string
-                  format: binary 
+                  format: binary
                   description: The image file (e.g., JPEG or PNG) to upload.
       responses:
         "201":
@@ -355,8 +401,20 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          description: Conversation Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
     get:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The unique identifier of the conversation.
+          schema:
+            type: string
+            example: "abcdef012345"
       tags: ["conversations"]
       summary: Get conversation photo gallery
       description: Retrieves a list of all photo messages (as a gallery) sent within a specific conversation.
@@ -377,10 +435,21 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: Conversation Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /conversations/{conversationId}/messages/starred:
     get:
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: The unique identifier of the conversation.
+          schema:
+            type: string
+            example: "abcdef012345"
       tags: ["messages", "conversations"]
       summary: Get all starred messages in a specific conversation.
       description: Retrieves a list of messages starred by the authenticated user within the given conversation.
@@ -399,14 +468,17 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: Conversation Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /messages:
     get:
       tags: ["messages"]
       summary: Search messages by content.
       description: |
-        Search for text messages containing the query string 
+        Search for text messages containing the query string
         (among all conversations of the authorized user).
       operationId: searchMessages
       security:
@@ -429,13 +501,12 @@ paths:
                   $ref: "#/components/schemas/message"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-  
   /messages/forwarded:
     post:
       tags: ["messages"]
       summary: Forward an existing message.
-      description: | 
-        Forwards the content of an existing message to a 
+      description: |
+        Forwards the content of an existing message to a
         destination chat.
       operationId: forwardMessage
       security:
@@ -452,7 +523,9 @@ paths:
                   description: id of the message to be forwarded.
                 destinationConversationId:
                   type: string
-                  description: id of the conversation where the message has to be forwarded
+                  description: |
+                    id of the conversation where the message has
+                    to be forwarded
         required: true
       responses:
         "201":
@@ -460,10 +533,14 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError" 
-
+          description: |
+            Source message or destination conversation not found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /messages/starred:
-    get: 
+    get:
       tags: ["messages"]
       summary: Get all starred messages.
       description: Retrieves a list of all messages starred by the authenticated user.
@@ -472,7 +549,7 @@ paths:
         - BearerAuth: []
       responses:
         "200":
-          description: Global starred messages retrieved successfully.
+          description: Starred messages retrieved successfully.
           content:
             application/json:
               schema:
@@ -481,16 +558,7 @@ paths:
                   $ref: "#/components/schemas/message"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-
   /messages/{messageId}/star:
-    parameters: 
-      - name: messageId
-        in: path
-        required: true
-        description: The unique identifier of the message.
-        schema:
-          type: string
-          example: "abcdef012345"
     put:
       tags: ["messages"]
       summary: Star a message
@@ -498,35 +566,60 @@ paths:
       operationId: starMessage
       security:
         - BearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          description: The id of the message to star.
+          schema:
+            type: string
+            example: "abcdef012345"
       responses:
         "204":
           description: Message successfully starred (No Content).
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-    delete: 
+          description: Message Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
+    delete:
       tags: ["messages"]
       summary: Unstar a message
-      description: Removes the star marking from a specific message for the authenticated user.
+      description: |
+        Removes the star marking from a specific message for
+        the authenticated user.
       operationId: unstarMessage
       security:
         - BearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          description: The unique identifier of the message to unstar.
+          schema:
+            type: string
+            example: "abcdef012345"
       responses:
         "204":
           description: Star successfully removed (No Content).
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: Message not found or Message wasn't starred.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /messages/{messageId}/reactions/me:
-    parameters: 
+    parameters:
       - name: messageId
         in: path
         required: true
         description: this is the message Id
-        schema: 
+        schema:
           type: string
           example: "abcdef012345"
     put:
@@ -534,15 +627,15 @@ paths:
       summary: Add or substitute a reaction to a message.
       description: |
         Send a reaction (emoticon) to an existing message.
-        If the user has already posted a reaction, the new reaction 
-        will substitute the existing reaction.
+        If the user has already posted a reaction, the new reaction
+        will substitute the existiing reaction.
       operationId: commentMessage
-      security: 
+      security:
       - BearerAuth: []
-      requestBody: 
+      requestBody:
         description: The emoticon used for the reaction.
         required: true
-        content: 
+        content:
           application/json:
             schema:
               type: object
@@ -553,7 +646,7 @@ paths:
                   minLength: 1
                   maxLength: 10
                   pattern: '^\P{L}\s*$'
-      responses: 
+      responses:
         "200":
           description: Reaction updated successfully.
         "201":
@@ -561,30 +654,39 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          description: Message Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
     delete:
       tags: ["messages"]
       summary: Delete the user's reaction to a message.
       description: |
         Delete the authenticated user's reaction to an existing message.
       operationId: uncommentMessage
-      security: 
+      security:
       - BearerAuth: []
-      responses: 
+      responses:
         "204":
-          description: Reaction removed successfully (No Content Returned).
+          description: |
+            Reaction removed successfully (No Content Returned).
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: |
+            Message not found or user's reaction not found.
+            content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /messages/{messageId}:
     delete:
       tags: ["messages"]
       summary: Delete an existing message.
       description: |
         The sender of the message can eliminate a message either
-        only for themselves or for all members of the conversation. 
+        only for themselves or for all members of the conversation.
       operationId: deleteMessage
       security:
         - BearerAuth: []
@@ -595,28 +697,33 @@ paths:
           schema:
             type: string
             description: The unique identifier of the message to delete.
-            example: "abcdef012345"
         - name: scope
           in: query
           required: true
           schema:
             type: string
-            enum: 
-            - me 
+            enum:
+            - me
             - everyone
-          description: it is the scope of the deletion
+            description: it is the scope of the deletion
       responses:
         "204":
           description: Message deleted successfully (No Content)
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
-          description: Forbidden (Authenticated user is not the sender of the message, or the time imiti for 'everyone' has expired)
+          description: |
+            Forbidden (Authenticated user is not the sender
+            of the message, or the time imiti for 'everyone' has expired)
         "404":
-          $ref: "#/components/responses/NotFoundError"
-
+          description: |
+            Message not found or user's reaction not found.
+            content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /groups:
-    post: 
+    post:
       tags: ["groups"]
       summary: Create a new group chat
       description: Creates a new group by inserting a name and the list of members.
@@ -629,9 +736,27 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/NewGroupRequest"
+              type: object
+              properties:
+                groupName:
+                  type: string
+                  description: The desired name for the new group.
+                  example: Study Group
+                  minLength: 3
+                  maxLength: 16
+                memberUsernames:
+                  type: array
+                  description: |
+                    List of usernames to invite to the group
+                    (excluding the creator).
+                  items:
+                    type: string
+                    example: Maria
+              required:
+                - groupName
+                - memberUsernames
       responses:
-        "201":
+        "200":
           description: Group successfully created.
           content:
             application/json:
@@ -642,76 +767,73 @@ paths:
                     type: string
                     example: "abcsh3478"
         "400":
-          description: Bad Request (Invalid group name or member list).
+          $ref: "#/components/responses/BadRequestError" 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-  
-  /groups/{groupId}:
-    delete:
-      tags: ["groups"]
-      summary: Delete a group
-      description: Deletes the entire group resource. Only group members should have this permission.
-      operationId: deleteGroup
-      security:
-        - BearerAuth: []
+  /groups/{groupId}/participants:
+    post:
       parameters:
         - name: groupId
           in: path
           required: true
-          description: The unique identifier of the group.
+          description: this is the group id.
           schema:
             type: string
             example: "abcdef012345"
-      responses:
-        "204":
-          description: Group successfully deleted (No Content).
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "403":
-          description: Forbidden (User lacks permission to delete the group).
-        "404":
-          $ref: "#/components/responses/NotFoundError"
-
-  /groups/{groupId}/participants:
-    post:
       tags: ["groups", "conversations"]
       summary: Add a new member to a group.
-      description: | 
-        An existing group member can add another existing user to the specified group
-      operationId: addToGroup
+      description: |
+        An existing group member can add another existing user to
+        the specified group
+      operationId: AddToGroup
       security:
         - BearerAuth: []
       requestBody:
         description: The username of the user to add to the group.
-        required: true
         content:
           application/json:
             schema:
               type: object
               properties:
                 username:
-                  type: string
                   example: Maria
-        responses:
+        required: true
+      responses:
         "204":
-          description: User added to the group successfully (No Content).
+          description: User added to the group successfully.
         "400":
-          description: Bad Request (username format is invalid)
+          $ref: "#/components/responses/BadRequestError" 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
-          description: Forbidden (Authenticated user is not a member of the group, or target user is already a member).
+          description: |
+            Forbidden (Authenticated user is not a member
+            of the group).
         "404":
           description: Group or Username Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
         "409":
-          description: Conflict (the target user is already a member).
-
+          description: |
+            Conflict (the target user is already a member).
   /groups/{groupId}/name:
     put:
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: this is the group id.
+          schema:
+            type: string
+            example: "abcdef012345"
       tags: ["groups", "conversations"]
       summary: Change group name
       description: |
-        The authenticated user can update the group name, if the new username is not already in use and if the user is a current member of the group.
+        The authenticated user can update the group name,
+        if the new username is not already in use and
+        if the user is a current member of the group.
       operationId: setGroupName
       security:
         - BearerAuth: []
@@ -733,23 +855,37 @@ paths:
         "200":
           description: Group name changed successfully.
         "400":
-          description: Invalid group name (length out of range).
+          $ref: "#/components/responses/BadRequestError" 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
-          description: Forbidden (Authenticated user is not a member of the group).
+          description: |
+            Forbidden (Authenticated user is not a member
+            of the group).
         "404":
           description: Group Not Found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
         "409":
           description: Conflict (the new group name is already in use).
-  
   /groups/{groupId}/photo:
     put:
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: this is the group id.
+          schema:
+            type: string
+            example: "abcdef012345"
       tags: ["groups", "conversations"]
       summary: Change a group profile picture.
       description: |
-        The authenticated user can update the group profile picture of an existing group they're a member of.
-      operationId: setGroupPhoto      
+        The authenticated user can update the group profile picture
+        of an existing group they're a member of.
+      operationId: setGroupPhoto
       security:
         - BearerAuth: []
       requestBody:
@@ -762,21 +898,169 @@ paths:
               properties:
                 photo:
                   type: string
-                  format: binary 
-                  description: The image file (e.g., JPEG or PNG) to upload as a new group profile picture
+                  format: binary
+                  description: |
+                    The image file (e.g., JPEG or PNG) to upload as
+                    a new group profile picture
       responses:
         "204":
           description: Profile picture updated successfully.
         "400":
-          description: Invalid request.
+          $ref: "#/components/responses/BadRequestError" 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
-          description: Forbidden (Authenticated user is not a member of the group).
+          description: |
+            Forbidden (Authenticated user is not a member
+            of the group).
         "404":
           description: Group Not Found
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: User Identifier
+  responses:
+    UnauthorizedError:
+      description: Unauthorized (Missing or invalid identifier in Authorization header).
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Authentication token is missing or invalid."
+    BadRequestError:
+      description: Request body or query failed validation checks.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Validation failed: Check input constraints."
+  schemas:
+    User:
+      type: object
+      description: details about a single WASAText user.
+      properties:
+        username:
+          type: string
+          pattern: '^.*?$'
+          minLength: 3
+          maxLength: 16
+          example: Marco
+          description: The username of the WASAText user.
+        photoURL:
+          type: string
+          format: url
+          description: The profile picture of the WASAText user.
+    conversation:
+      type: object
+      description: |
+        A single conversation, either one-on-one or a group chat.
+      properties:
+        conversationId:
+          type: string
+          example: "abcdef012345"
+          description: the unique identifier of the conversation.
+        conversationName:
+          type: string
+          pattern: '^.*?$'
+          minLength: 3
+          maxLength: 16
+          example: "Class Group"
+          description: |
+            the username of the other user (one-on-one) or the
+            group name (group chats).
+        conversationPhoto:
+          type: string
+          format: url
+          description: |
+            URL of the user's profile picture or the group photo.
+        lastMessageTimestamp:
+          type: string
+          format: date-time
+          description: |
+            The date and time of the latest message in the conversation.
+        lastMessagePreview:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: |
+            The preview of the latest message. If the message was a
+            picture, this can be represented by an indicator
+            (e.g., [Image]).
+    message:
+      type: object
+      description: a single message (either text or a picture).
+      properties:
+        messageId:
+          type: string
+          example: "abcdef012345"
+          description: the unique identifier of the message.
+        senderName:
+          type: string
+          pattern: '^.*?$'
+          minLength: 3
+          maxLength: 16
+          example: "Maria"
+          description: The username of the sender of the message.
+        messageTimestamp:
+          type: string
+          format: date-time
+          description: Date and time the message was sent.
+        textContent:
+          type: string
+          description: The content if the message is a text message.
+          nullable: true
+          minLength: 1
+          maxLength: 1000
+          pattern: '^\s*[\s\S]*$'
+        photoURL:
+          type: string
+          format: url
+          description: the URL of the photo if the message is a photo message.
+          nullable: true
+        status:
+          type: string
+          enum:
+          - sent
+          - received
+          - read
+          description: |
+            checkmarks status (one checkmark if received,
+            two checkmarks if read by all participants)
+        reactions:
+          type: array
+          description: |
+            List of reactions (emoticons) and the names of users who reacted
+          items:
+            type: object
+            properties:
+              emoticon:
+                type: string
+              username:
+                type: string
+        isStarred:
+          type: boolean
+          description: |
+            True if the user has marked has marked
+            this message as starred. False otherwise.
+    NotFoundErrorSchema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "The specified resource was not found."
   securitySchemes:
     BearerAuth:
       type: http
