@@ -921,32 +921,6 @@ paths:
                 $ref: '#/components/schemas/NotFoundErrorSchema'
 
 components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: User Identifier
-  responses:
-    UnauthorizedError:
-      description: Unauthorized (Missing or invalid identifier in Authorization header).
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Authentication token is missing or invalid."
-    BadRequestError:
-      description: Request body or query failed validation checks.
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Validation failed: Check input constraints."
   schemas:
     User:
       type: object
@@ -1066,7 +1040,6 @@ components:
       type: http
       scheme: bearer
       bearerFormat: User Identifier
-  
   responses:
     UnauthorizedError:
       description: Unauthorized (Missing or invalid identifier in Authorization header).
@@ -1078,18 +1051,6 @@ components:
               message:
                 type: string
                 example: "Authentication token is missing or invalid."
-
-    NotFoundError:
-      description: Resource not found.
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "The specified resource was not found."
-
     BadRequestError:
       description: Request body or query failed validation checks.
       content:
@@ -1100,141 +1061,3 @@ components:
               message:
                 type: string
                 example: "Validation failed: Check input constraints."
-
-  schemas:
-    User:
-      type: object
-      description: Details about a single WASAText user.
-      properties:
-        username:
-          type: string
-          pattern: '^.*?$'
-          minLength: 3
-          maxLength: 16
-          example: Marco
-          description: The username of the WASAText user.
-        photoURL:
-          type: string
-          format: url
-          description: The profile picture of the WASAText user.
-
-    NewGroupRequest:
-      type: object
-      description: Data required to create a new group chat.
-      properties:
-        groupName:
-          type: string
-          description: The desired name for the new group.
-          example: Study Buddies
-          minLength: 3
-          maxLength: 16
-          pattern: '^.*?$'
-        memberUsernames:
-          type: array
-          description: List of usernames to invite to the group (excluding the creator).
-          minItems: 0
-          maxItems: 50
-          items:
-            type: string
-            example: Maria
-            minLength: 3
-            maxLength: 16
-            pattern: '^.*?$'
-      required:
-        - groupName
-        - memberUsernames
-
-    conversation:
-      type: object
-      description: |
-        A single conversation, either one-on-one or a group chat.
-      properties:
-        conversationId:
-          type: string
-          example: "abcdef012345"
-          description: the unique identifier of the conversation.
-        conversationName:
-          type: string
-          pattern: '^.*?$'
-          minLength: 3
-          maxLength: 16
-          example: "Class Group"
-          description: |
-            the username of the other user (one-on-one) or the 
-            group name (group chats).
-        conversationPhoto: 
-          type: string
-          format: url
-          description: |
-            URL of the user's profile picture or the group photo.
-        lastMessageTimestamp:
-          type: string
-          format: date-time
-          description: |
-            The date and time of the latest message in the conversation.
-        lastMessagePreview:
-          type: string
-          minLength: 1
-          maxLength: 30
-          description: |
-            The preview of the latest message. If the message was a
-            picture, this can be represented by an indicator 
-            (e.g., [Image]).
-    
-    message:
-      type: object
-      description: a single message (either text or a picture).
-      properties:
-        messageId: 
-          type: string
-          example: "abcdef012345"
-          description: the unique identifier of the message.
-        senderName:
-          type: string
-          pattern: '^.*?$'
-          minLength: 3
-          maxLength: 16
-          example: "Maria"
-          description: The username of the sender of the message.
-        messageTimestamp:
-          type: string
-          format: date-time
-          description: Date and time the message was sent.
-        textContent:
-          type: string
-          description: The content if the message is a text message.
-          minLength: 1
-          maxLength: 1000 
-          nullable: true
-        photoURL:
-          type: string
-          format: url
-          description: the URL of the photo if the message is a photo message.
-          nullable: true
-        status:
-          type: string
-          enum:
-          - sent
-          - received 
-          - read
-          description: |
-            checkmarks status (one checkmark if received, 
-            two checkmarks if read by all participants)
-        reactions:
-          type: array
-          description: |
-            List of reactions (emoticons) and the names of users who reacted
-          minItems: 0
-          maxItems: 50 
-          items:
-            type: object
-            properties:
-              emoticon:
-                type: string
-              username:
-                type: string
-        isStarred:
-          type: boolean
-          description: |
-            True if the user has marked has marked
-            this message as starred. False otherwise.
