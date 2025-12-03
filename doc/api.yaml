@@ -33,11 +33,13 @@ paths:
         content:
           application/json:
             schema:
+              description: User details (username)
               type: object
               properties:
                 name:
+                  description: unique username of user
                   type: string
-                  example: Maria
+                  example: 'Maria'
                   pattern: '^.*?$'
                   minLength: 3
                   maxLength: 16
@@ -48,9 +50,11 @@ paths:
           content:
             application/json:
               schema:
+                description: unique identifier for the user
                 type: object
                 properties:
                   identifier:
+                    description: the user ID
                     type: string
                     example: "abcdef012345"
         "400":
@@ -70,7 +74,12 @@ paths:
           in: query
           required: false
           schema:
+            description: unique username of user
             type: string
+            example: 'Maria'
+            pattern: '^.*?$'
+            minLength: 3
+            maxLength: 16
           description: Search query to filter users by username.
       security:
         - BearerAuth: []
@@ -80,7 +89,9 @@ paths:
           content:
             application/json:
               schema:
+                description: array of users
                 type: array
+                minItems: 0
                 items:
                   $ref: "#/components/schemas/User"
         "401":
@@ -107,16 +118,18 @@ paths:
         content:
           application/json:
             schema:
+              description: New username
               type: object
               properties:
                 name:
+                  description: New username
                   type: string
-                  example: Luca
+                  example: 'Luca'
                   pattern: '^.*?$'
                   minLength: 3
                   maxLength: 16
       responses:
-        "200":
+        "204":
           description: Username changed successfully.
         "400":
           $ref: "#/components/responses/BadRequestError" 
@@ -140,6 +153,7 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              description: New profile picture
               properties:
                 photo:
                   type: string
@@ -154,6 +168,41 @@ paths:
           $ref: "#/components/responses/BadRequestError" 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+  /users/{username}:
+    get:
+      tags: ["user"]
+      summary: Get user profile details
+      description: Retrieves the profile (username, photo URL) for a specific WASAText user.
+      operationId: getUserProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: The username of the WASAText user to retrieve.
+          schema:
+            description: The username of the WASAText user to retrieve.
+            type: string
+            example: 'Luca'
+            pattern: '^.*?$'
+            minLength: 3
+            maxLength: 16
+      responses:
+        "200":
+          description: User profile retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: User not found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /user/groups/{groupId}:
     parameters:
       - name: groupId
@@ -161,6 +210,7 @@ paths:
         required: true
         description: this is the group Id
         schema:
+          description: unique identifier for group
           type: string
           example: "abcdef012345"
     delete:
@@ -200,6 +250,9 @@ paths:
             application/json:
               schema:
                 type: array
+                description: |
+                  list of all chats sorted in reversed chronological order
+                minItems: 0
                 items:
                   $ref: "#/components/schemas/conversation"
         "401":
@@ -220,6 +273,7 @@ paths:
         content:
           application/json:
             schema:
+              description: username of the target user.
               type: object
               properties:
                 targetUsername:
@@ -231,9 +285,11 @@ paths:
           content:
             application/json:
               schema:
+                description: id of the existing conversation
                 type: object
                 properties:
                   conversationId:
+                    description: conversation id
                     type: string
                     example: "abcs56837"
         "201":
@@ -241,9 +297,11 @@ paths:
           content:
             application/json:
               schema:
+                description: unique identifier for the new conversation
                 type: object
                 properties:
                   conversationId:
+                    description: conversation id
                     type: string
                     example: "bbcd02345"
         "401":
@@ -264,6 +322,7 @@ paths:
           schema:
             type: string
             example: "absc55459"
+            description: conversation id
       tags: ["conversations"]
       summary: Get the messages of a specific conversation.
       description: |
@@ -279,6 +338,8 @@ paths:
             application/json:
               schema:
                 type: array
+                description: list of messages
+                minItems: 0
                 items:
                   $ref: "#/components/schemas/message"
         "401":
@@ -304,6 +365,7 @@ paths:
           required: true
           description: The ID of the conversation.
           schema:
+            description: id of the conversation
             type: string
             example: "abcdef012345"
       responses:
@@ -325,6 +387,7 @@ paths:
           required: true
           description: this is the conversation id.
           schema:
+            description: id of the conversation
             type: string
             example: "abcdef012345"
       tags: ["messages", "conversations"]
@@ -339,6 +402,7 @@ paths:
         content:
           application/json:
             schema:
+              description: message
               type: object
               properties:
                 textContent:
@@ -355,8 +419,10 @@ paths:
             application/json:
               schema:
                 type: object
+                description: id of the new message
                 properties:
                   identifier:
+                    description: unique identifier of the message
                     type: string
                     example: "abcdef012345"
         "401":
@@ -375,6 +441,7 @@ paths:
           required: true
           description: The id of the conversation.
           schema:
+            description: conversation id
             type: string
             example: "absbf5593"
       tags: ["messages", "conversations"]
@@ -389,6 +456,7 @@ paths:
         content:
           multipart/form-data:
             schema:
+              description: The image to be uploaded.
               type: object
               properties:
                 photo:
@@ -396,7 +464,7 @@ paths:
                   format: binary
                   description: The image file (e.g., JPEG or PNG) to upload.
       responses:
-        "201":
+        "204":
           description: Photo message successfully sent.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
@@ -413,6 +481,7 @@ paths:
           required: true
           description: The unique identifier of the conversation.
           schema:
+            description: conversation id
             type: string
             example: "abcdef012345"
       tags: ["conversations"]
@@ -427,10 +496,13 @@ paths:
           content:
             application/json:
               schema:
+                description: list of URL of photos
                 type: array
+                minItems: 0
                 items:
                   type: string
                   format: url
+                  minLength: 0
                   description: URL of the photo message.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
@@ -448,6 +520,7 @@ paths:
           required: true
           description: The unique identifier of the conversation.
           schema:
+            description: The unique identifier of the conversation.
             type: string
             example: "abcdef012345"
       tags: ["messages", "conversations"]
@@ -462,7 +535,9 @@ paths:
           content:
             application/json:
               schema:
+                description: array of starred messages
                 type: array
+                minItems: 0
                 items:
                   $ref: "#/components/schemas/message"
         "401":
@@ -488,6 +563,7 @@ paths:
           in: query
           required: true
           schema:
+            description: term to filter message content
             type: string
           description: Search term to filter message content.
       responses:
@@ -516,6 +592,7 @@ paths:
         content:
           application/json:
             schema:
+              description: IDs needed
               type: object
               properties:
                 sourceMessageId:
@@ -528,7 +605,7 @@ paths:
                     to be forwarded
         required: true
       responses:
-        "201":
+        "204":
           description: Message forwarded successfully.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
@@ -554,6 +631,7 @@ paths:
             application/json:
               schema:
                 type: array
+                minItems: 0
                 items:
                   $ref: "#/components/schemas/message"
         "401":
@@ -572,6 +650,7 @@ paths:
           required: true
           description: The id of the message to star.
           schema:
+            description: The id of the message to star.
             type: string
             example: "abcdef012345"
       responses:
@@ -600,6 +679,7 @@ paths:
           required: true
           description: The unique identifier of the message to unstar.
           schema:
+            description: The unique identifier of the message to unstar
             type: string
             example: "abcdef012345"
       responses:
@@ -620,6 +700,7 @@ paths:
         required: true
         description: this is the message Id
         schema:
+          description: this is the message Id
           type: string
           example: "abcdef012345"
     put:
@@ -638,18 +719,16 @@ paths:
         content:
           application/json:
             schema:
+              description: The emoticon used for the reaction.
               type: object
               properties:
                 emoticon:
+                  description: The emoticon used for the reaction.
                   type: string
-                  example: "❤"
                   minLength: 1
-                  maxLength: 10
                   pattern: '^\P{L}\s*$'
       responses:
-        "200":
-          description: Reaction updated successfully.
-        "201":
+        "204":
           description: Reaction created successfully.
         "401":
           $ref: "#/components/responses/UnauthorizedError"
@@ -736,6 +815,7 @@ paths:
         content:
           application/json:
             schema:
+              description: Group details (name and members).
               type: object
               properties:
                 groupName:
@@ -761,15 +841,73 @@ paths:
           content:
             application/json:
               schema:
+                description: group id
                 type: object
                 properties:
                   groupId:
+                    description: group id
                     type: string
                     example: "abcsh3478"
         "400":
           $ref: "#/components/responses/BadRequestError" 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+  /groups/{groupId}:
+    get:
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: this is the group id.
+          schema:
+            description: this is the group id.
+            type: string
+            example: "abcdef012345"
+      tags: ["groups"]
+      summary: Get group details
+      description: Retrieves the current name, photo, and member list for a specific group.
+      operationId: getGroupDetails
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Group details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                description: Group details
+                type: object
+                properties:
+                  groupId:
+                    description: group id
+                    type: string
+                    example: "abcdef012345"
+                  groupName:
+                    description: group name
+                    type: string
+                    example: "Class Group"
+                  groupPhoto:
+                    description: URL of the group profile picture
+                    type: string
+                    format: url
+                  members:
+                    type: array
+                    minItems: 1
+                    description: List of current member usernames.
+                    items:
+                      type: string
+                      example: 'Luca'
+                      pattern: '^.*?$'
+                      minLength: 3
+                      maxLength: 16
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Group not found.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/NotFoundErrorSchema'
   /groups/{groupId}/participants:
     post:
       parameters:
@@ -778,6 +916,7 @@ paths:
           required: true
           description: this is the group id.
           schema:
+            description: this is the group id.
             type: string
             example: "abcdef012345"
       tags: ["groups", "conversations"]
@@ -785,7 +924,7 @@ paths:
       description: |
         An existing group member can add another existing user to
         the specified group
-      operationId: AddToGroup
+      operationId: addToGroup
       security:
         - BearerAuth: []
       requestBody:
@@ -793,10 +932,16 @@ paths:
         content:
           application/json:
             schema:
+              description: The username of the user to add to the group.
               type: object
               properties:
                 username:
-                  example: Maria
+                  description: The username of the user to add to the group.
+                  type: string
+                  example: 'Maria'
+                  pattern: '^.*?$'
+                  minLength: 3
+                  maxLength: 16
         required: true
       responses:
         "204":
@@ -826,6 +971,7 @@ paths:
           required: true
           description: this is the group id.
           schema:
+            description: this is the group id.
             type: string
             example: "abcdef012345"
       tags: ["groups", "conversations"]
@@ -843,16 +989,18 @@ paths:
         content:
           application/json:
             schema:
+              description: New group name
               type: object
               properties:
                 name:
+                  description: New group name
                   type: string
-                  example: Gruppo Classe
+                  example: 'Gruppo Classe'
                   pattern: '^.*?$'
                   minLength: 3
                   maxLength: 16
       responses:
-        "200":
+        "204":
           description: Group name changed successfully.
         "400":
           $ref: "#/components/responses/BadRequestError" 
@@ -878,6 +1026,7 @@ paths:
           required: true
           description: this is the group id.
           schema:
+            description: this is the group id.
             type: string
             example: "abcdef012345"
       tags: ["groups", "conversations"]
@@ -894,6 +1043,7 @@ paths:
         content:
           multipart/form-data:
             schema:
+              description: New group picture
               type: object
               properties:
                 photo:
@@ -931,7 +1081,7 @@ components:
           pattern: '^.*?$'
           minLength: 3
           maxLength: 16
-          example: Marco
+          example: 'Marco'
           description: The username of the WASAText user.
         photoURL:
           type: string
@@ -951,7 +1101,7 @@ components:
           pattern: '^.*?$'
           minLength: 3
           maxLength: 16
-          example: "Class Group"
+          example: 'Class Group'
           description: |
             the username of the other user (one-on-one) or the
             group name (group chats).
@@ -986,7 +1136,7 @@ components:
           pattern: '^.*?$'
           minLength: 3
           maxLength: 16
-          example: "Maria"
+          example: 'Maria'
           description: The username of the sender of the message.
         messageTimestamp:
           type: string
@@ -1030,9 +1180,11 @@ components:
             True if the user has marked has marked
             this message as starred. False otherwise.
     NotFoundErrorSchema:
+      description: Resource Not Found schema
       type: object
       properties:
         message:
+          description: message for Resource Not Found schema
           type: string
           example: "The specified resource was not found."
   securitySchemes:
@@ -1042,13 +1194,15 @@ components:
       bearerFormat: User Identifier
   responses:
     UnauthorizedError:
-      description: Unauthorized (Missing or invalid identifier in Authorization header).
+      description: Unauthorized Error (Missing or invalid identifier in Authorization header).
       content:
         application/json:
           schema:
+            description: Unauthorized Error schema.
             type: object
             properties:
               message:
+                description: message for Unauthorized Error
                 type: string
                 example: "Authentication token is missing or invalid."
     BadRequestError:
@@ -1056,8 +1210,10 @@ components:
       content:
         application/json:
           schema:
+            description: Bad Request Error schema
             type: object
             properties:
               message:
+                description: Bad Request Error message
                 type: string
                 example: "Validation failed: Check input constraints."
