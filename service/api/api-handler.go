@@ -46,11 +46,5 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.PUT("/groups/:groupId/name", rt.wrap(rt.setGroupName))
 	rt.router.PUT("/groups/:groupId/photo", rt.wrap(rt.setGroupPhoto))
 
-	// Special route for OpenAPI documentation (if present in the framework)
-	// rt.router.GET("/openapi.json", rt.getOpenAPI)
-
-	// Special routes
-	// rt.router.GET("/liveness", rt.liveness)
-
 	return rt.router
 }

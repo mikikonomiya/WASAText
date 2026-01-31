@@ -51,13 +51,17 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		if strings.Contains(errMsg, "target user not found") {
 			// 404 Not Found
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "User not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "User not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		if strings.Contains(errMsg, "conflict") {
 			// 409 Conflict
 			w.WriteHeader(http.StatusConflict)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "User already in group"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "User already in group"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 

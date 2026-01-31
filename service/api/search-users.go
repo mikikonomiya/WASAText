@@ -26,7 +26,9 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, ps httpro
 	if query != "" && len(users) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		// YAML says return a JSON error schema
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Username not found"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"error": "Username not found"}); err != nil {
+			ctx.Logger.WithError(err).Error("error encoding response")
+		}
 		return
 	}
 

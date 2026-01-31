@@ -51,5 +51,7 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, ps httpro
 	// 5. Success (200 OK)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(group)
+	if err := json.NewEncoder(w).Encode(group); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }

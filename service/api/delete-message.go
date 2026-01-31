@@ -37,7 +37,9 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps http
 		errMsg := err.Error()
 		if errMsg == "message not found" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Message not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Message not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		if strings.Contains(errMsg, "forbidden") {

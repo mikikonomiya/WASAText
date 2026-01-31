@@ -28,7 +28,9 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	if err != nil {
 		if err.Error() == "group not found or user not a member" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Group not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Group not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")

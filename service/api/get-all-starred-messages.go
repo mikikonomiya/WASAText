@@ -39,5 +39,7 @@ func (rt *_router) getAllStarredMessages(w http.ResponseWriter, r *http.Request,
 		messages = []database.Message{}
 	}
 
-	_ = json.NewEncoder(w).Encode(messages)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }

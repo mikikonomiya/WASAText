@@ -45,7 +45,9 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 	if err != nil {
 		if err.Error() == "message not found or access denied" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Message not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Message not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")

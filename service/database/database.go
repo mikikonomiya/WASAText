@@ -38,6 +38,8 @@ import (
 	"fmt"
 )
 
+var ErrConversationNotFound = errors.New("conversation not found or access denied")
+
 // AppDatabase is the high level interface for the DB
 type AppDatabase interface {
 
@@ -107,109 +109,98 @@ type appdbimpl struct {
 
 // New returns a new instance of AppDatabase based on the SQLite connection `db`.
 // `db` is required - an error will be returned if `db` is `nil`.
+// service/database/database.go
+
 func New(db *sql.DB) (AppDatabase, error) {
 	if db == nil {
 		return nil, errors.New("database is required when building a AppDatabase")
 	}
 
-	// Check if table exists. If not, the database is empty, and we need to create the structure
-	var tableName string
-	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='users';`).Scan(&tableName)
+	// 1. Users Table
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS users (
+        identifier TEXT NOT NULL PRIMARY KEY, 
+        username TEXT NOT NULL UNIQUE,
+        photo_id TEXT DEFAULT NULL 
+    );`)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("error creating users table: %w", err)
+	}
 
-	if errors.Is(err, sql.ErrNoRows) {
-		// Users Table
-		sqlStmt := `CREATE TABLE IF NOT EXISTS users (
-		identifier TEXT NOT NULL PRIMARY KEY, 
-		username TEXT NOT NULL UNIQUE,
-		photo_id TEXT DEFAULT NULL 
-		);`
-		if err != nil {
-			return nil, fmt.Errorf("error creating users table: %w", err)
-		}
+	// 2. Conversations Table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS conversations (
+        conversation_id TEXT NOT NULL PRIMARY KEY,
+        name TEXT, 
+        photo_id TEXT, 
+        last_message TEXT, 
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating conversations table: %w", err)
+	}
 
-		// Conversations Table
-		sqlStmt = `CREATE TABLE IF NOT EXISTS conversations (
-			conversation_id TEXT NOT NULL PRIMARY KEY,
-			name TEXT, 
-			photo_id TEXT, 
-			last_message TEXT, 
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);`
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return nil, err
-		}
+	// 3. Participants Table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS participants (
+        conversation_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (conversation_id, user_id),
+        FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id),
+        FOREIGN KEY (user_id) REFERENCES users(identifier)
+    );`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating participants table: %w", err)
+	}
 
-		// Participants Table
-		sqlStmt = `CREATE TABLE IF NOT EXISTS participants (
-		conversation_id TEXT NOT NULL,
-		user_id TEXT NOT NULL,
-		last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-		PRIMARY KEY (conversation_id, user_id),
-		FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id),
-		FOREIGN KEY (user_id) REFERENCES users(identifier)
-		);`
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return nil, err
-		}
+	// 4. Messages Table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS messages (
+        message_id TEXT NOT NULL PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        sender_id TEXT NOT NULL,
+        content TEXT NOT NULL, 
+        kind TEXT NOT NULL, 
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id),
+        FOREIGN KEY (sender_id) REFERENCES users(identifier)
+    );`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating messages table: %w", err)
+	}
 
-		// Messages Table
-		sqlStmt = `CREATE TABLE IF NOT EXISTS messages (
-			message_id TEXT NOT NULL PRIMARY KEY,
-			conversation_id TEXT NOT NULL,
-			sender_id TEXT NOT NULL,
-			content TEXT NOT NULL, -- The text message or the filename of the image
-			kind TEXT NOT NULL,    -- 'text' or 'image'
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id),
-			FOREIGN KEY (sender_id) REFERENCES users(identifier)
-		);`
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return nil, err
-		}
+	// 5. Stars Table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS stars (
+        user_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        PRIMARY KEY (user_id, message_id),
+        FOREIGN KEY (user_id) REFERENCES users(identifier),
+        FOREIGN KEY (message_id) REFERENCES messages(message_id)
+    );`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating stars table: %w", err)
+	}
 
-		// Stars Table (NEW)
-		sqlStmt = `CREATE TABLE IF NOT EXISTS stars (
-			user_id TEXT NOT NULL,
-			message_id TEXT NOT NULL,
-			PRIMARY KEY (user_id, message_id),
-			FOREIGN KEY (user_id) REFERENCES users(identifier),
-			FOREIGN KEY (message_id) REFERENCES messages(message_id)
-		);`
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return nil, fmt.Errorf("error creating stars table: %w", err)
-		}
+	// 6. Deleted Messages Table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS deleted_messages (
+        user_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        PRIMARY KEY (user_id, message_id),
+        FOREIGN KEY (user_id) REFERENCES users(identifier),
+        FOREIGN KEY (message_id) REFERENCES messages(message_id)
+    );`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating deleted_messages table: %w", err)
+	}
 
-		//  Deleted Messages Table (NEW)
-		// Keeps track of messages hidden by specific users (scope="me")
-		sqlStmt = `CREATE TABLE IF NOT EXISTS deleted_messages (
-			user_id TEXT NOT NULL,
-			message_id TEXT NOT NULL,
-			PRIMARY KEY (user_id, message_id),
-			FOREIGN KEY (user_id) REFERENCES users(identifier),
-			FOREIGN KEY (message_id) REFERENCES messages(message_id)
-		);`
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return nil, fmt.Errorf("error creating deleted_messages table: %w", err)
-		}
-
-		// Reactions Table (NEW)
-		sqlStmt = `CREATE TABLE IF NOT EXISTS reactions (
-			user_id TEXT NOT NULL,
-			message_id TEXT NOT NULL,
-			emoji TEXT NOT NULL,
-			PRIMARY KEY (user_id, message_id), -- Ensure one reaction per user per message
-			FOREIGN KEY (user_id) REFERENCES users(identifier),
-			FOREIGN KEY (message_id) REFERENCES messages(message_id)
-		);`
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return nil, fmt.Errorf("error creating reactions table: %w", err)
-		}
+	// 7. Reactions Table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS reactions (
+        user_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        emoji TEXT NOT NULL,
+        PRIMARY KEY (user_id, message_id),
+        FOREIGN KEY (user_id) REFERENCES users(identifier),
+        FOREIGN KEY (message_id) REFERENCES messages(message_id)
+    );`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating reactions table: %w", err)
 	}
 
 	return &appdbimpl{

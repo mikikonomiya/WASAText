@@ -53,7 +53,9 @@ func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httpr
 		if strings.Contains(errMsg, "conflict") {
 			// 409 Conflict
 			w.WriteHeader(http.StatusConflict)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Group name already taken"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Group name already taken"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 

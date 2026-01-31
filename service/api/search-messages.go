@@ -48,5 +48,7 @@ func (rt *_router) searchMessages(w http.ResponseWriter, r *http.Request, ps htt
 		messages = []database.Message{}
 	}
 
-	_ = json.NewEncoder(w).Encode(messages)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }

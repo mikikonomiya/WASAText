@@ -29,7 +29,9 @@ func (rt *_router) getConvStarredMessages(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		if err.Error() == "conversation not found or access denied" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Conversation not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Conversation not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")
@@ -45,5 +47,7 @@ func (rt *_router) getConvStarredMessages(w http.ResponseWriter, r *http.Request
 		messages = []database.Message{}
 	}
 
-	_ = json.NewEncoder(w).Encode(messages)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }

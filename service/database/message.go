@@ -11,8 +11,8 @@ func (db *appdbimpl) GetConversationMessages(conversationID string, myID string)
 	// 1. Security Check
 	var dummy int
 	err := db.c.QueryRow(`SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?`, conversationID, myID).Scan(&dummy)
-	if err == sql.ErrNoRows {
-		return nil, errors.New("conversation not found or access denied")
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrConversationNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -46,6 +46,9 @@ func (db *appdbimpl) GetConversationMessages(conversationID string, myID string)
 		}
 		messages = append(messages, m)
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	return messages, nil
 }
 
@@ -56,8 +59,8 @@ func (db *appdbimpl) SendMessage(conversationID string, senderID string, text st
 	// 1. Security Check: Are you a participant?
 	var dummy int
 	err := db.c.QueryRow("SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?", conversationID, senderID).Scan(&dummy)
-	if err == sql.ErrNoRows {
-		return Message{}, errors.New("conversation not found or access denied")
+	if errors.Is(err, sql.ErrNoRows) {
+		return Message{}, ErrConversationNotFound
 	}
 	if err != nil {
 		return Message{}, err
@@ -117,8 +120,8 @@ func (db *appdbimpl) SendPhotoMessage(conversationID string, senderID string, ph
 	// 1. Security Check: Are you a participant?
 	var dummy int
 	err := db.c.QueryRow("SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?", conversationID, senderID).Scan(&dummy)
-	if err == sql.ErrNoRows {
-		return errors.New("conversation not found or access denied")
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrConversationNotFound
 	}
 	if err != nil {
 		return err
@@ -160,8 +163,8 @@ func (db *appdbimpl) GetConversationPhotos(conversationID string, myID string) (
 	// 1. Security Check: Is the user a participant?
 	var dummy int
 	err := db.c.QueryRow("SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?", conversationID, myID).Scan(&dummy)
-	if err == sql.ErrNoRows {
-		return nil, errors.New("conversation not found or access denied")
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrConversationNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -203,8 +206,8 @@ func (db *appdbimpl) GetStarredMessages(conversationID string, myID string) ([]M
 	// 1. Security Check: Participant?
 	var dummy int
 	err := db.c.QueryRow("SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?", conversationID, myID).Scan(&dummy)
-	if err == sql.ErrNoRows {
-		return nil, errors.New("conversation not found or access denied")
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrConversationNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -234,6 +237,10 @@ func (db *appdbimpl) GetStarredMessages(conversationID string, myID string) ([]M
 			return nil, err
 		}
 		messages = append(messages, m)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return messages, nil
@@ -273,6 +280,10 @@ func (db *appdbimpl) SearchMessages(myID string, query string) ([]Message, error
 		messages = append(messages, m)
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return messages, nil
 }
 
@@ -289,7 +300,7 @@ func (db *appdbimpl) ForwardMessage(myID string, sourceMsgID string, destConvID 
 		WHERE m.message_id = ? AND p.user_id = ?`,
 		sourceMsgID, myID).Scan(&content, &kind)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("source message not found or access denied")
 	}
 	if err != nil {
@@ -304,7 +315,7 @@ func (db *appdbimpl) ForwardMessage(myID string, sourceMsgID string, destConvID 
 		WHERE conversation_id = ? AND user_id = ?`,
 		destConvID, myID).Scan(&dummy)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("destination conversation not found or access denied")
 	}
 	if err != nil {
@@ -350,7 +361,7 @@ func (db *appdbimpl) DeleteMessage(messageID string, myID string, scope string) 
 	// 1. Check if message exists and who is the sender
 	var senderID string
 	err := db.c.QueryRow("SELECT sender_id FROM messages WHERE message_id = ?", messageID).Scan(&senderID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("message not found")
 	}
 	if err != nil {
@@ -410,6 +421,10 @@ func (db *appdbimpl) GetAllStarredMessages(myID string) ([]Message, error) {
 		messages = append(messages, m)
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return messages, nil
 }
 func (db *appdbimpl) StarMessage(messageID string, myID string) error {
@@ -423,7 +438,7 @@ func (db *appdbimpl) StarMessage(messageID string, myID string) error {
 		WHERE m.message_id = ? AND p.user_id = ?`,
 		messageID, myID).Scan(&dummy)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("message not found or access denied")
 	}
 	if err != nil {
@@ -468,7 +483,7 @@ func (db *appdbimpl) ReactToMessage(messageID string, myID string, emoji string)
 		WHERE m.message_id = ? AND p.user_id = ?`,
 		messageID, myID).Scan(&dummy)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("message not found or access denied")
 	}
 	if err != nil {

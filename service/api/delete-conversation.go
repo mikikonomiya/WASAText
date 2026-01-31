@@ -30,7 +30,9 @@ func (rt *_router) deleteConversation(w http.ResponseWriter, r *http.Request, ps
 	if err != nil {
 		if err.Error() == "conversation not found" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Conversation not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Conversation not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")

@@ -28,7 +28,9 @@ func (rt *_router) unstarMessage(w http.ResponseWriter, r *http.Request, ps http
 	if err != nil {
 		if err.Error() == "star not found" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Message not found or not starred"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Message not found or not starred"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")

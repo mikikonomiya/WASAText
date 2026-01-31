@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"wasatext/service/api/reqcontext"
+	"wasatext/service/database"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -26,9 +28,11 @@ func (rt *_router) getConvPhotos(w http.ResponseWriter, r *http.Request, ps http
 
 	// 3. Handle Errors
 	if err != nil {
-		if err.Error() == "conversation not found or access denied" {
+		if errors.Is(err, database.ErrConversationNotFound) {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Conversation not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Conversation not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")
@@ -40,9 +44,9 @@ func (rt *_router) getConvPhotos(w http.ResponseWriter, r *http.Request, ps http
 	// If the list is empty, ensure we return "[]"
 	photoURLs := make([]string, 0)
 
-	// We assume your server runs on localhost:3000.
+	// We assume your server runs on the configured port.
 	// Ideally, this base URL should come from a config file.
-	baseURL := "http://localhost:3000/images/"
+	baseURL := "/images/"
 
 	for _, fname := range filenames {
 		fullURL := baseURL + fname
@@ -52,5 +56,7 @@ func (rt *_router) getConvPhotos(w http.ResponseWriter, r *http.Request, ps http
 	// 5. Success
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(photoURLs)
+	if err := json.NewEncoder(w).Encode(photoURLs); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }

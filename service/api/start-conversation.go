@@ -41,7 +41,9 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, ps 
 	if err != nil {
 		if err.Error() == "target user not found" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Target user not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Target user not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")
@@ -55,12 +57,14 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, ps 
 	if created {
 		// Status 201: Return Full Object
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(convo)
+		if err := json.NewEncoder(w).Encode(convo); err != nil {
+			ctx.Logger.WithError(err).Error("error encoding response")
+		}
 	} else {
 		// Status 200: Return only {"conversationId": "..."}
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"conversationId": convo.ID,
-		})
+		if err := json.NewEncoder(w).Encode(map[string]string{"conversationId": convo.ID}); err != nil {
+			ctx.Logger.WithError(err).Error("error encoding response")
+		}
 	}
 }

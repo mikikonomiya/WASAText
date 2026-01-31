@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 )
 
 // GetOrCreateUser checks if a user exists.
@@ -82,7 +83,7 @@ func (db *appdbimpl) GetUser(username string) (User, error) {
 	// select single user matching the username
 	err := db.c.QueryRow("SELECT identifier, username FROM users WHERE username = ?", username).Scan(&u.Identifier, &u.Username)
 	// if error is "no rows found", user doesnt exist
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, err
 	}
 	// if its another error (lost connection...) return it

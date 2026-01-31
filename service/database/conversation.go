@@ -62,7 +62,7 @@ func (db *appdbimpl) CreateOneToOneConversation(myID string, targetUsername stri
 
 	// 1. Find the Target User's ID
 	err := db.c.QueryRow("SELECT identifier FROM users WHERE username = ?", targetUsername).Scan(&targetID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		// We return a specific error so the API knows to send 404
 		return Conversation{}, false, errors.New("target user not found")
 	}
@@ -144,7 +144,7 @@ func (db *appdbimpl) ClearConversationHistory(conversationID string, myID string
 	// If 0 rows affected, it means the conversation ID is wrong
 	// OR I am not a participant.
 	if rowsAffected == 0 {
-		return errors.New("conversation not found")
+		return ErrConversationNotFound
 	}
 
 	return nil
@@ -178,7 +178,7 @@ func (db *appdbimpl) CreateGroup(name string, creatorID string, memberUsernames 
 		err := db.c.QueryRow("SELECT identifier FROM users WHERE username = ?", username).Scan(&memberID)
 
 		// If user doesn't exist, we skip them (or you could return an error)
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			continue
 		}
 		if err != nil {
@@ -219,7 +219,7 @@ func (db *appdbimpl) GetGroupDetails(groupID string, myID string) (GroupDetails,
 		WHERE c.conversation_id = ? AND p.user_id = ? AND c.name IS NOT NULL`,
 		groupID, myID).Scan(&g.Name, &photoID)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return GroupDetails{}, errors.New("group not found or access denied")
 	}
 	if err != nil {
@@ -245,6 +245,9 @@ func (db *appdbimpl) GetGroupDetails(groupID string, myID string) (GroupDetails,
 			return GroupDetails{}, err
 		}
 		g.Members = append(g.Members, username)
+	}
+	if rows.Err() != nil {
+		return GroupDetails{}, rows.Err()
 	}
 
 	return g, nil
@@ -283,7 +286,7 @@ func (db *appdbimpl) AddUserToGroup(groupID string, myID string, targetUsername 
 		WHERE conversation_id = ? AND user_id = ?`,
 		groupID, myID).Scan(&dummy)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		// If I'm not in it, either group doesn't exist or I'm forbidden.
 		// We return a specific error to handle 403 vs 404 in the handler,
 		// or just Forbidden if we want to be safe.
@@ -296,7 +299,7 @@ func (db *appdbimpl) AddUserToGroup(groupID string, myID string, targetUsername 
 	// 2. Find Target User ID
 	var targetID string
 	err = db.c.QueryRow("SELECT identifier FROM users WHERE username = ?", targetUsername).Scan(&targetID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("target user not found")
 	}
 	if err != nil {
@@ -333,7 +336,7 @@ func (db *appdbimpl) SetGroupName(groupID string, myID string, newName string) e
 		WHERE conversation_id = ? AND user_id = ?`,
 		groupID, myID).Scan(&dummy)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("forbidden: access denied or group not found")
 	}
 	if err != nil {
@@ -370,7 +373,7 @@ func (db *appdbimpl) SetGroupPhoto(groupID string, myID string, photoID string) 
 		WHERE conversation_id = ? AND user_id = ?`,
 		groupID, myID).Scan(&dummy)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("forbidden: access denied or group not found")
 	}
 	if err != nil {

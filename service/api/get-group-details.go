@@ -28,7 +28,9 @@ func (rt *_router) getGroupDetails(w http.ResponseWriter, r *http.Request, ps ht
 	if err != nil {
 		if err.Error() == "group not found or access denied" {
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Group not found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Group not found"}); err != nil {
+				ctx.Logger.WithError(err).Error("error encoding response")
+			}
 			return
 		}
 		ctx.Logger.WithError(err).Error("db error")
@@ -39,11 +41,13 @@ func (rt *_router) getGroupDetails(w http.ResponseWriter, r *http.Request, ps ht
 	// 4. Format Photo URL
 	// If PhotoID is empty, you might want to send a default image URL or keep it empty string.
 	if details.PhotoID != "" {
-		details.PhotoID = "http://localhost:3000/images/" + details.PhotoID
+		details.PhotoID = "/images/" + details.PhotoID
 	}
 
 	// 5. Success
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(details)
+	if err := json.NewEncoder(w).Encode(details); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }

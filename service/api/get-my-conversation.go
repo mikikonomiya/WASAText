@@ -37,5 +37,7 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 	// 4. Send Response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(conversations)
+	if err := json.NewEncoder(w).Encode(conversations); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }

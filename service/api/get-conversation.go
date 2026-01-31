@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"wasatext/service/api/reqcontext"
@@ -30,7 +31,7 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 	// 4. Handle Errors
 	if err != nil {
 		// If the error message matches what we wrote in Step 4
-		if err.Error() == "conversation not found or access denied" {
+		if errors.Is(err, database.ErrConversationNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -48,5 +49,7 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 		messages = []database.Message{}
 	}
 
-	_ = json.NewEncoder(w).Encode(messages)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		ctx.Logger.WithError(err).Error("error encoding response")
+	}
 }
