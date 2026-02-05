@@ -153,11 +153,22 @@ export default {
             this.isUploadingPhoto = false;
         },
         formatDate(ts) {
-            if (!ts) return "Invalid Date";
-            // Replace SQL space with T for browser compatibility
+            if (!ts) return "";
+            // Handle ISO format (already has T and Z)
+            if (ts.includes("T") && ts.includes("Z")) {
+                try {
+                    return new Date(ts).toLocaleString();
+                } catch (e) {
+                    return ts;
+                }
+            }
+            
+            // Handle SQL format (needs T and Z)
             const iso = ts.replace(" ", "T") + (ts.includes("Z") ? "" : "Z"); 
             try {
-                return new Date(iso).toLocaleString();
+                let d = new Date(iso);
+                if (isNaN(d.getTime())) return ts; // Return original if parsing fails
+                return d.toLocaleString();
             } catch (e) {
                 return ts;
             }

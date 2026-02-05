@@ -552,7 +552,7 @@ func (db *appdbimpl) GetAllStarredMessages(myID string) ([]Message, error) {
 			return nil, err
 		}
 		// Fix Time string for browser compatibility
-		m.CreatedAt = strings.Replace(m.CreatedAt, " ", "T", 1) + "Z"
+		// m.CreatedAt = strings.Replace(m.CreatedAt, " ", "T", 1) + "Z"
 
 		m.IsStarred = true // By definition because they are in this list
 		messages = append(messages, m)

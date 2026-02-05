@@ -27,9 +27,23 @@ export default {
             myPhoto: null,
             
             // Theme
-            darkMode: false
+            darkMode: false,
+
+            // Search
+            searchQuery: ""
 		}
 	},
+    computed: {
+        filteredConversations() {
+            if (!this.searchQuery) {
+                return this.conversations;
+            }
+            const query = this.searchQuery.toLowerCase();
+            return this.conversations.filter(c => 
+                (c.conversationName || "").toLowerCase().includes(query)
+            );
+        }
+    },
 	watch: {
 		$route() { // this code runs whenever the route changes
 			this.username = localStorage.getItem("username");
@@ -195,21 +209,31 @@ export default {
 					</h6>
 					
                     <!-- Profile Link -->
-                    <div class="mx-3 mt-2 mb-3 p-2 bg-body rounded shadow-sm border d-flex align-items-center justify-content-between">
+                    <div class="mx-3 mt-2 mb-3 p-2 rounded user-profile-card d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2 text-truncate">
-                            <div class="bg-secondary rounded-circle text-white d-flex align-items-center justify-content-center overflow-hidden" style="width: 32px; height: 32px; font-size: 14px;">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center overflow-hidden" style="width: 32px; height: 32px; font-size: 14px;">
                                 <img v-if="myPhoto" :src="myPhoto" alt="" style="width: 100%; height: 100%; object-fit: cover;">
-                                <span v-else>{{ username?.charAt(0).toUpperCase() }}</span>
+                                <span v-else class="fw-bold">{{ username?.charAt(0).toUpperCase() }}</span>
                             </div>
                             <span class="fw-bold text-body text-truncate">{{ username }}</span>
                         </div>
-                        <RouterLink to="/profile" class="btn btn-sm btn-outline-secondary border-0" title="My Profile">
+                        <RouterLink to="/profile" class="btn btn-sm btn-link text-secondary p-0" title="My Profile">
                              <svg class="feather" style="width: 16px; height: 16px;"><use href="/feather-sprite-v4.29.0.svg#settings"/></svg>
                         </RouterLink>
                     </div>
+
+                    <!-- Search Bar -->
+                    <div class="px-3 mb-2">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-body border-end-0">
+                                <svg class="feather" style="width: 14px; height: 14px;"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
+                            </span>
+                            <input type="text" class="form-control border-start-0 ps-0" placeholder="Search chats..." v-model="searchQuery">
+                        </div>
+                    </div>
 					
 					<ul class="nav flex-column mb-auto overflow-auto">
-						<li class="nav-item" v-for="c in conversations" :key="c.conversationId">
+						<li class="nav-item" v-for="c in filteredConversations" :key="c.conversationId">
 							<div class="nav-link d-flex align-items-center gap-2 p-0" :class="{ 'bg-primary-subtle': $route.path === '/conversations/' + c.conversationId }">
                                 <!-- Avatar Clickable Area -->
                                 <div class="p-2 cursor-pointer" @click.stop.prevent="openInfoModal(c)" title="View Photo">
@@ -278,5 +302,23 @@ main {
 }
 .z-index-1030 {
     z-index: 1030;
+}
+/* Style adjustments for search input */
+.input-group-text {
+    border-right: none;
+    background-color: var(--bs-body-bg);
+}
+.form-control:focus {
+    box-shadow: none;
+    border-color: var(--bs-border-color);
+}
+
+.user-profile-card {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08) !important;
+}
+.hover-opacity-100:hover {
+    opacity: 1 !important;
 }
 </style>
