@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - images-data:/app/doc/images
+    environment:
+      - API_PORT=3000
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - images-data:/usr/share/nginx/html/images
+
+volumes:
+  images-data:
+    # In a real setup, we might need a reverse proxy, but for now 
+    # we assume the frontend is configured (via vite) to hit localhost:3000 
+    # or the user accepts Cross-Origin requests.

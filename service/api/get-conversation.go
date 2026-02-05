@@ -11,8 +11,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// Matches operationId: getConversation
-func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+// Matches operationId: getConversationMessages
+func (rt *_router) getConversationMessages(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 
 	// 1. Auth
 	authHeader := r.Header.Get("Authorization")

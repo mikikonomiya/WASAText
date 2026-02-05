@@ -20,7 +20,7 @@ func (db *appdbimpl) GetOrCreateUser(username string) (string, error) {
 	}
 
 	// If the error is NOT "no rows found", it's a real error (like DB disconnected)
-	if err != sql.ErrNoRows {
+	if !errors.Is(err, sql.ErrNoRows) {
 		return "", err
 	}
 
@@ -49,10 +49,10 @@ func (db *appdbimpl) SearchUsers(query string) ([]User, error) {
 
 	// If the search query is empty, select ALL users
 	if query == "" {
-		rows, err = db.c.Query("SELECT identifier, username FROM users ORDER BY username")
+		rows, err = db.c.Query("SELECT identifier, username, photo_id FROM users ORDER BY username")
 	} else {
 		// If query exists, find exact matches
-		rows, err = db.c.Query("SELECT identifier, username FROM users WHERE username = ?", query)
+		rows, err = db.c.Query("SELECT identifier, username, photo_id FROM users WHERE username = ?", query)
 	}
 
 	if err != nil {
@@ -65,8 +65,12 @@ func (db *appdbimpl) SearchUsers(query string) ([]User, error) {
 	var users []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.Identifier, &u.Username); err != nil {
+		var photoID sql.NullString
+		if err := rows.Scan(&u.Identifier, &u.Username, &photoID); err != nil {
 			return nil, err
+		}
+		if photoID.Valid {
+			u.PhotoID = photoID.String
 		}
 		users = append(users, u)
 	}
@@ -80,8 +84,13 @@ func (db *appdbimpl) SearchUsers(query string) ([]User, error) {
 
 func (db *appdbimpl) GetUser(username string) (User, error) {
 	var u User
+	var photoID sql.NullString
 	// select single user matching the username
-	err := db.c.QueryRow("SELECT identifier, username FROM users WHERE username = ?", username).Scan(&u.Identifier, &u.Username)
+	err := db.c.QueryRow("SELECT identifier, username, photo_id FROM users WHERE username = ?", username).Scan(&u.Identifier, &u.Username, &photoID)
+
+	if photoID.Valid {
+		u.PhotoID = photoID.String
+	}
 	// if error is "no rows found", user doesnt exist
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, err

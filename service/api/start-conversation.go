@@ -55,9 +55,21 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, ps 
 	w.Header().Set("Content-Type", "application/json")
 
 	if created {
-		// Status 201: Return Full Object
+		// Status 201: Return Full Object but map ID -> conversationId
 		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(convo); err != nil {
+		// We create a temporary struct or map to override the JSON tag
+		resp := struct {
+			ConversationId string `json:"conversationId"`
+			Name           string `json:"name,omitempty"`
+			LastMessage    string `json:"last_message"`
+			UpdatedAt      string `json:"updated_at"`
+		}{
+			ConversationId: convo.ID,
+			Name:           convo.Name,
+			LastMessage:    convo.LastMessage,
+			UpdatedAt:      convo.UpdatedAt,
+		}
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			ctx.Logger.WithError(err).Error("error encoding response")
 		}
 	} else {

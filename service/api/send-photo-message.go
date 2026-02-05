@@ -2,11 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"wasatext/service/api/reqcontext"
 
 	"github.com/julienschmidt/httprouter"
@@ -39,19 +41,10 @@ func (rt *_router) sendPhotoMessage(w http.ResponseWriter, r *http.Request, ps h
 	}
 	defer file.Close()
 
-	// 4. Generate a unique filename
-	// We can't use the db helper directly here because it is private.
-	// Option A: Make `generateNewID` public in database package (Capital G).
-	// Option B: Just use a simple UUID here.
-	// Let's assume you rename the helper in database.go to "GenerateNewID" (Capital G).
-	// If not, just implement a small random string generator here.
-
-	// Quick random generator for filename:
-	// (Ideally, move `generateNewID` to a shared `utils` package or make it public `database.GenerateNewID`)
-	photoID := "img-" + myID + "-" + conversationID // Simple unique-ish name for now
-	// BETTER: If you can, update database.go to make GenerateNewID public!
-
-	filename := photoID + ".png"
+	// 4. Generate a unique filename using timestamp
+	// Format: img_<timestamp>_<user_id>.png
+	photoID := fmt.Sprintf("img_%d_%s.png", time.Now().UnixNano(), myID)
+	filename := photoID
 
 	// 5. Save File to Disk
 	dstPath := filepath.Join("./doc/images", filename)
@@ -71,8 +64,12 @@ func (rt *_router) sendPhotoMessage(w http.ResponseWriter, r *http.Request, ps h
 		return
 	}
 
-	// 6. Update Database
-	err = rt.db.SendPhotoMessage(conversationID, myID, filename)
+	// 6. Get Caption
+	caption := r.FormValue("caption")
+	replyTo := r.FormValue("replyTo") // Optional
+
+	// 7. Update Database
+	err = rt.db.SendPhotoMessage(conversationID, myID, filename, caption, replyTo)
 
 	// 7. Handle Errors
 	if err != nil {

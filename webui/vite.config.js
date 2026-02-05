@@ -1,10 +1,10 @@
-import {fileURLToPath, URL} from 'node:url'
+import { fileURLToPath, URL } from 'node:url'
 
-import {defineConfig} from 'vite'
+import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
-export default defineConfig(({command, mode, ssrBuild}) => {
+export default defineConfig(({ command, mode, ssrBuild }) => {
 	const ret = {
 		plugins: [vue()],
 		resolve: {
@@ -12,10 +12,23 @@ export default defineConfig(({command, mode, ssrBuild}) => {
 				'@': fileURLToPath(new URL('./src', import.meta.url))
 			}
 		},
+		server: {
+			proxy: {
+				'/session': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/users': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/user': { target: 'http://host.docker.internal:3000', changeOrigin: true }, // Re-added!
+				'/conversations': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/groups': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/images': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/messages': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/reactions': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/starred': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+			}
+		}
 	};
 	ret.define = {
 		// Do not modify this constant, it is used in the evaluation.
-		"__API_URL__": JSON.stringify("http://localhost:3000"),
+		"__API_URL__": JSON.stringify(""),
 	};
 	return ret;
 })

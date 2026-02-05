@@ -1,0 +1,35 @@
+FROM golang:1.23 AS builder
+
+WORKDIR /src
+
+# Copy dependency files
+COPY go.mod go.sum ./
+COPY vendor/ vendor/
+
+# Copy source code
+COPY cmd/ cmd/
+COPY service/ service/
+COPY doc/ doc/
+
+# Build the executable
+# CGO_ENABLED=1 is required for go-sqlite3
+RUN CGO_ENABLED=1 GOOS=linux go build -o /app/webapi ./cmd/webapi
+
+# Final Stage
+FROM debian:stable-slim
+
+WORKDIR /app
+
+# Copy the binary
+COPY --from=builder /app/webapi .
+# Copy api documentation if served by the backend
+COPY --from=builder /src/doc ./doc
+
+# Expose ports (API and Debug)
+EXPOSE 3000 4000
+
+# Set the volume for the database
+VOLUME ["/app/data"]
+
+# Run the binary
+CMD ["./webapi"]

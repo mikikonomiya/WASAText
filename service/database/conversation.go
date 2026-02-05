@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
+	"strings"
 )
 
 func (db *appdbimpl) GetMyConversations(userID string) ([]Conversation, error) {
@@ -13,39 +14,97 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]Conversation, error) {
 	// 1. Go to 'participants' table.
 	// 2. Find rows where user_id matches me.
 	// 3. Join with 'conversations' table to get the chat details.
-	// 4. Order by 'updated_at' descending (newest on top).
-	query := `
-		SELECT c.conversation_id, c.name, c.last_message, c.updated_at
+	// 4. Order by 'updated_at'	// Returns all conversations where the user is a participant
+	rows, err = db.c.Query(`
+		SELECT c.conversation_id, c.name, c.photo_id, c.last_message, c.updated_at,
+		(SELECT COUNT(*) 
+		 FROM messages m 
+		 WHERE m.conversation_id = c.conversation_id 
+		 AND m.created_at > p.last_seen
+		) as unread_count
 		FROM conversations c
 		JOIN participants p ON c.conversation_id = p.conversation_id
 		WHERE p.user_id = ?
-		ORDER BY c.updated_at DESC
-	`
-
-	rows, err = db.c.Query(query, userID)
+		ORDER BY c.updated_at DESC`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	// Parse the results
 	var chats []Conversation
 	for rows.Next() {
 		var c Conversation
-		// Note: SQL NULL strings can be tricky in Go.
-		// Ideally 'name' and 'last_message' should handle NULLs,
-		// but for simplicity here we assume they have values or empty strings.
-		// If your DB has NULLs, you might need sql.NullString.
-		var name sql.NullString
-		var lastMsg sql.NullString
+		var name, photoID, lastMessage, updatedAt sql.NullString
+		var unreadCount int
 
-		if err := rows.Scan(&c.ID, &name, &lastMsg, &c.UpdatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &name, &photoID, &lastMessage, &updatedAt, &unreadCount); err != nil {
 			return nil, err
 		}
 
-		// Convert sql.NullString to string
-		c.Name = name.String
-		c.LastMessage = lastMsg.String
+		// ...
+
+		if name.Valid && strings.TrimSpace(name.String) != "" {
+			c.Name = name.String
+			c.IsGroup = true
+			if photoID.Valid && photoID.String != "" {
+				c.Photo = "/images/" + photoID.String
+			}
+		} else {
+			c.IsGroup = false
+		}
+		// ...
+		if lastMessage.Valid {
+			c.LastMessage = lastMessage.String
+		}
+		if updatedAt.Valid {
+			c.UpdatedAt = updatedAt.String
+		}
+		c.UnreadCount = unreadCount
+
+		// If name is empty, it's a Direct Message. We need to find the other person's name.
+		if !c.IsGroup {
+			var otherUsername string
+			var otherPhotoID sql.NullString
+			// Find a participant in this conversation who is NOT me.
+			err := db.c.QueryRow(`
+				SELECT u.username, u.photo_id
+				FROM participants p
+				JOIN users u ON p.user_id = u.identifier
+				WHERE p.conversation_id = ? AND p.user_id != ?
+				LIMIT 1
+			`, c.ID, userID).Scan(&otherUsername, &otherPhotoID)
+
+			if err == nil {
+				c.Name = otherUsername
+				if otherPhotoID.Valid && otherPhotoID.String != "" {
+					c.Photo = "/images/" + otherPhotoID.String
+				}
+			} else {
+				if errors.Is(err, sql.ErrNoRows) {
+					// Fallback: This might be a "Self Chat" (me talking to me)
+					// So let's check if *I* am in there (which I should be, otherwise I wouldn't see it).
+					// We query for MY username/photo.
+					errMy := db.c.QueryRow(`
+						SELECT u.username, u.photo_id
+						FROM participants p
+						JOIN users u ON p.user_id = u.identifier
+						WHERE p.conversation_id = ? AND p.user_id = ?
+						LIMIT 1
+					`, c.ID, userID).Scan(&otherUsername, &otherPhotoID)
+
+					if errMy == nil {
+						c.Name = otherUsername + " (You)"
+						if otherPhotoID.Valid && otherPhotoID.String != "" {
+							c.Photo = "/images/" + otherPhotoID.String
+						}
+					} else {
+						c.Name = "Unknown Chat"
+					}
+				} else {
+					c.Name = "ERR: " + err.Error()
+				}
+			}
+		}
 
 		chats = append(chats, c)
 	}
@@ -316,7 +375,7 @@ func (db *appdbimpl) AddUserToGroup(groupID string, myID string, targetUsername 
 		// Row exists -> Conflict
 		return errors.New("conflict: user already in group")
 	}
-	if err != sql.ErrNoRows {
+	if !errors.Is(err, sql.ErrNoRows) {
 		// Database error
 		return err
 	}
@@ -353,7 +412,7 @@ func (db *appdbimpl) SetGroupName(groupID string, myID string, newName string) e
 	if err == nil {
 		return errors.New("conflict: group name already taken")
 	}
-	if err != sql.ErrNoRows {
+	if !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 

@@ -14,3 +14,12 @@ docker-compose.log
 
 .vscode/*
 !.vscode/extensions.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# User Uploaded Content
+/doc/images/*
+!/doc/images/.keep

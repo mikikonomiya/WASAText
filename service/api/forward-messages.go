@@ -19,33 +19,38 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 	myID := strings.TrimPrefix(authHeader, "Bearer ")
+	destConvID := ps.ByName("conversationId")
 
 	// 2. Parse Body
 	var body struct {
-		SourceMessageID           string `json:"sourceMessageId"`
-		DestinationConversationID string `json:"destinationConversationId"`
+		SourceMessageIDs []string `json:"sourceMessageIds"`
 	}
+	// Decode
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// 3. Call DB
-	err := rt.db.ForwardMessage(myID, body.SourceMessageID, body.DestinationConversationID)
-
-	// 4. Handle Errors
-	if err != nil {
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "access denied") {
-			w.WriteHeader(http.StatusNotFound)
-			if err := json.NewEncoder(w).Encode(map[string]string{"error": errMsg}); err != nil {
-				ctx.Logger.WithError(err).Error("error encoding response")
+	// 3. Loop and Forward
+	// If one fails, we log it but continue (best effort), or fail all?
+	// Best effort seems appropriate for UI actions, or fail fast.
+	// Let's go with "Fail Fast" for simplicity of error reporting.
+	for _, msgID := range body.SourceMessageIDs {
+		err := rt.db.ForwardMessage(myID, msgID, destConvID)
+		if err != nil {
+			// Handle specific errors
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "access denied") {
+				w.WriteHeader(http.StatusNotFound)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": "Message " + msgID + ": " + errMsg})
+				// Stop processing
+				return
 			}
+			// rt.db.ForwardMessage(myID, msgID, destConvID) // retry? No.
+			ctx.Logger.WithError(err).Error("db error forwarding message " + msgID)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		ctx.Logger.WithError(err).Error("db error")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	// 5. Success (204 No Content)

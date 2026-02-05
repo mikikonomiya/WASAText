@@ -64,9 +64,10 @@ type AppDatabase interface {
 	// updates user's "last_seen" timestamp, hiding all previous messages
 	ClearConversationHistory(conversationID string, myID string) error
 	// adds a new text message to conversation and updates conversation's "last_message" and "updated_at" fields.
-	SendMessage(conversationID string, senderID string, text string) (Message, error)
+	SendMessage(conversationID string, senderID string, text string, replyTo string) (Message, error)
 	// adds a new image message. content is the filename (e.g., "msg-1234.png").
-	SendPhotoMessage(conversationID string, senderID string, photoID string) error
+	// adds a new image message. content is the caption, photoID is the filename.
+	SendPhotoMessage(conversationID string, senderID string, photoID string, caption string, replyTo string) error
 	// returns a list of photo filenames for the chat e.g., ["img1.png", "img2.png"]
 	GetConversationPhotos(conversationID string, myID string) ([]string, error)
 	// returns messages from a conversation that the user has starred.
@@ -100,11 +101,20 @@ type AppDatabase interface {
 	SetGroupName(groupID string, myID string, newName string) error
 	// updates the profile picture of a group. checks if 'myID' is a member before updating.
 	SetGroupPhoto(groupID string, myID string, photoID string) error
+	// Returns list of users who reacted to a message
+	GetMessageReactions(messageID string) ([]ReactionDetail, error)
 	Ping() error
 }
 
 type appdbimpl struct {
 	c *sql.DB
+}
+
+// ... (existing code) ...
+
+type ReactionDetail struct {
+	Username string `json:"username"`
+	Emoji    string `json:"emoji"`
 }
 
 // New returns a new instance of AppDatabase based on the SQLite connection `db`.
@@ -122,7 +132,7 @@ func New(db *sql.DB) (AppDatabase, error) {
         username TEXT NOT NULL UNIQUE,
         photo_id TEXT DEFAULT NULL 
     );`)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("error creating users table: %w", err)
 	}
 
@@ -157,8 +167,11 @@ func New(db *sql.DB) (AppDatabase, error) {
         conversation_id TEXT NOT NULL,
         sender_id TEXT NOT NULL,
         content TEXT NOT NULL, 
+        photo_source TEXT,
         kind TEXT NOT NULL, 
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		reply_to TEXT,
+		is_forwarded BOOLEAN DEFAULT FALSE,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id),
         FOREIGN KEY (sender_id) REFERENCES users(identifier)
     );`)
@@ -191,6 +204,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 	}
 
 	// 7. Reactions Table
+	// Constraint: One reaction per user per message
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS reactions (
         user_id TEXT NOT NULL,
         message_id TEXT NOT NULL,
@@ -202,6 +216,9 @@ func New(db *sql.DB) (AppDatabase, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating reactions table: %w", err)
 	}
+
+	// Enable WAL mode to avoid "database is locked" errors during concurrent read/write
+	_, _ = db.Exec("PRAGMA journal_mode=WAL;")
 
 	return &appdbimpl{
 		c: db,
@@ -225,22 +242,41 @@ func GenerateNewID() (string, error) {
 type User struct {
 	Identifier string `json:"identifier"`
 	Username   string `json:"username"`
+	PhotoID    string `json:"photo_id"`
 }
 
 type Conversation struct {
-	ID          string `json:"id"`
-	Name        string `json:"name,omitempty"` // "omitempty" hides this field if empty
-	LastMessage string `json:"last_message"`
-	UpdatedAt   string `json:"updated_at"`
+	ID          string `json:"conversationId"`
+	Name        string `json:"conversationName,omitempty"` // "omitempty" hides this field if empty
+	Photo       string `json:"conversationPhoto"`          // New field
+	LastMessage string `json:"lastMessagePreview"`
+	UpdatedAt   string `json:"lastMessageTimestamp"`
+	UnreadCount int    `json:"unreadCount"` // New field
+	IsGroup     bool   `json:"isGroup"`     // New field to distinguish DM vs Group
 }
 
 type Message struct {
-	ID             string `json:"id"`
-	ConversationID string `json:"conversationId"`
-	SenderID       string `json:"senderId"`
-	Content        string `json:"content"`
-	Kind           string `json:"kind"` // "text" or "image"
-	CreatedAt      string `json:"created_at"`
+	ID             string     `json:"messageId"`
+	ConversationID string     `json:"conversationId"`
+	SenderID       string     `json:"senderId"`
+	SenderName     string     `json:"senderName"` // Added for frontend display
+	Content        string     `json:"textContent"`
+	PhotoSource    string     `json:"photoSource,omitempty"` // Filename if it's a photo
+	Kind           string     `json:"kind"`                  // "text" or "image"
+	ReplyTo        string     `json:"replyTo,omitempty"`     // ID of the message replied to
+	ReplyToSender  string     `json:"replyToSender,omitempty"`
+	ReplyToText    string     `json:"replyToText,omitempty"`
+	IsForwarded    bool       `json:"isForwarded"` // New field for Forwarded indicator
+	CreatedAt      string     `json:"messageTimestamp"`
+	Status         string     `json:"status"`    // "received" or "read"
+	Reactions      []Reaction `json:"reactions"` // List of reactions
+	IsStarred      bool       `json:"isStarred"` // New field
+}
+
+type Reaction struct {
+	Emoji string `json:"emoji"`
+	Count int    `json:"count"`
+	IsMe  bool   `json:"isMe"`
 }
 
 type GroupDetails struct {

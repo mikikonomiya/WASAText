@@ -940,43 +940,7 @@ paths:
           content:
             application/json:
               schema:
-                description: Group details
-                type: object
-                properties:
-                  groupId:
-                    description: group id
-                    type: string
-                    minLength: 8
-                    maxLength: 32
-                    pattern: '^[a-zA-Z0-9]+$'
-                    example: "abcdef012345"
-                  groupName:
-                    description: group name
-                    type: string
-                    minLength: 3
-                    maxLength: 25
-                    pattern: ^.*$
-                    example: "Class Group"
-                  groupPhoto:
-                    description: URL of the group profile picture
-                    type: string
-                    format: url
-                    example: "https://wasatext.app/storage/photos/abc.jpg" 
-                    minLength: 10 
-                    maxLength: 2048 
-                    pattern: '^https?://.+$' 
-                  members:
-                    type: array
-                    minItems: 1
-                    maxItems: 50
-                    description: List of current member usernames.
-                    items:
-                      description: username of group member
-                      type: string
-                      example: 'Luca'
-                      pattern: ^[a-zA-Z0-9._]+$
-                      minLength: 3
-                      maxLength: 16
+                $ref: "#/components/schemas/group"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
@@ -1194,7 +1158,7 @@ components:
           description: the unique identifier of the conversation.
         conversationName:
           type: string
-          pattern: ^[[:print:] ]+$
+          pattern: ^.*$
           minLength: 3
           maxLength: 25
           example: 'Class Group'
@@ -1230,23 +1194,42 @@ components:
             (e.g., [Image]).
     group:
       type: object
+      description: details about a group (id, name, photo, and members).
       properties:
         groupId:
           type: string
           minLength: 8
           maxLength: 32
           pattern: '^[a-zA-Z0-9]+$'
+          description: the unique identifier of the group.
+          example: "abcdef012345"
         groupName:
           type: string
           minLength: 3
           maxLength: 25
+          pattern: ^.*$
+          description: the name of the group.
+          example: "Class Group"
         groupPhoto:
           type: string
           format: url
+          minLength: 10
+          maxLength: 2048
+          pattern: '^https?://.+$'
+          description: URL of the group profile picture.
+          example: "https://wasatext.app/storage/photos/abc.jpg"
         members:
           type: array
+          minItems: 1
+          maxItems: 50
+          description: List of current member usernames.
           items:
             type: string
+            description: username of group member
+            minLength: 3
+            maxLength: 16
+            pattern: ^[a-zA-Z0-9._]+$
+            example: 'Luca'
     message:
       type: object
       description: a single message (either text or a picture).
@@ -1337,7 +1320,7 @@ components:
           type: string
           minLength: 1
           maxLength: 250
-          pattern: '^[[:print:] ]*$'
+          pattern: '^.*$'
           example: "The specified resource was not found."
   securitySchemes:
     BearerAuth:
@@ -1358,7 +1341,7 @@ components:
                 type: string
                 minLength: 1
                 maxLength: 150 
-                pattern: '^[[:print:] ]*$'
+                pattern: '^.*$'
                 example: "Authentication token is missing or invalid."
     BadRequestError:
       description: Request body or query failed validation checks.
@@ -1373,5 +1356,5 @@ components:
                 type: string
                 minLength: 1
                 maxLength: 150 
-                pattern: '^[[:print:] ]*$'
+                pattern: '^.*$'
                 example: "Validation failed: Check input constraints."

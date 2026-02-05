@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"wasatext/service/api/reqcontext"
+	"wasatext/service/database"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -43,8 +44,10 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, ps httprou
 	// Ensure the directory exists first!
 	_ = os.MkdirAll("./doc/images", 0755) // Creates doc/images folder if missing
 
-	// we assume file extension is png for simplicity or just save bytes.
-	filename := userID + ".png"
+	// we use a random suffix (or timestamp) to avoid browser caching issues when the photo changes.
+	// Simple approach: userID + "_" + randomHex + ".png"
+	rnd, _ := database.GenerateNewID()
+	filename := userID + "_" + rnd + ".png"
 	dstPath := filepath.Join("./doc/images", filename)
 
 	dst, err := os.Create(dstPath)
@@ -62,6 +65,8 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
+	// 6. Update Database
+	//  tell the DB: "User X now has photo 'X.png'"
 	// 6. Update Database
 	//  tell the DB: "User X now has photo 'X.png'"
 	err = rt.db.SetUserPhoto(userID, filename)
