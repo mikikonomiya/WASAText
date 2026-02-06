@@ -27,28 +27,47 @@ export default {
             starredLoading: false,
             photos: [],
             photosLoading: false,
-            selectedImage: null
+            selectedImage: null,
+            realIsGroup: this.isGroup // Initialize with prop, but allow override
         }
     },
     async mounted() {
-        if (this.isGroup) {
-            this.activeTab = 'members';
+        // ALWAYS try to fetch group details. If it succeeds, it IS a group.
+        // If it fails (404), it is a DM. This fixes the issue where the list might have wrong isGroup flag.
+        this.loading = true;
+        try {
             await this.fetchDetails();
-        } else {
-            // For 1-on-1, just set basic info
-            this.activeTab = 'photos'; // Default to photos for DMs
-            this.loading = false;
-            this.groupStub.groupName = this.initialName;
-            this.groupStub.groupPhoto = this.conversation ? this.conversation.conversationPhoto : null;
+            this.realIsGroup = true;
+            this.activeTab = 'members';
+        } catch (e) {
+            // It's a DM (404 expected), so we treat it as such.
+            this.realIsGroup = false;
+            this.activeTab = 'photos';
+            
+            // FALLBACK STRATEGY: Directly access root data to bypass prop issues
+            // Since Sidebar works, $root.conversations MUST have the data.
+            let directConv = null;
+            if (this.$root && this.$root.conversations) {
+                directConv = this.$root.conversations.find(c => c.conversationId === this.conversationId);
+            }
+            
+            if (directConv) {
+                this.groupStub.groupName = directConv.conversationName || 'Chat Info';
+                this.groupStub.groupPhoto = directConv.conversationPhoto;
+            } else {
+                // Last resort: props
+                this.groupStub.groupName = (this.initialName && this.initialName !== 'Group') ? this.initialName : 'Chat Info';
+                this.groupStub.groupPhoto = this.conversation ? this.conversation.conversationPhoto : null;
+            }
         }
-        // Always fetch starred messages when opening? Or only when tab clicked?
-        // Let's fetch initially if tab is starred.
-        // Initial fetch
+        
+        // Initial fetch for tabs
         if (this.activeTab === 'starred') {
             this.fetchStarred();
         } else if (this.activeTab === 'photos') {
             this.fetchPhotos();
         }
+        this.loading = false;
     },
     watch: {
         activeTab(newTab) {
@@ -57,6 +76,28 @@ export default {
             } else if (newTab === 'photos') {
                 this.fetchPhotos();
             }
+        },
+        initialName: {
+             handler(newVal) {
+                 // If we are treating as DM (realIsGroup is false), update the name dynamically
+                 if (!this.realIsGroup) {
+                     this.groupStub.groupName = (newVal && newVal !== 'Group') ? newVal : 'Chat Info';
+                 }
+             },
+             immediate: true
+        },
+        conversation: {
+            handler(newVal) {
+                console.log("GSM Watch: conversation updated:", newVal);
+                if (newVal && !this.realIsGroup) {
+                     this.groupStub.groupPhoto = newVal.conversationPhoto;
+                     // Also re-apply name logic just in case
+                     if (this.initialName && this.initialName !== 'Group') {
+                         this.groupStub.groupName = this.initialName;
+                     }
+                }
+            },
+            immediate: true
         }
     },
     methods: {
@@ -85,15 +126,10 @@ export default {
              this.starredLoading = false;
         },
         async fetchDetails() {
-            this.loading = true;
-            try {
-                const response = await this.$axios.get(`/groups/${this.conversationId}`);
-                this.groupStub = response.data;
-                this.newName = this.groupStub.groupName;
-            } catch (e) {
-                console.warn("Failed to fetch group details", e);
-            }
-            this.loading = false;
+            // Let the caller handle loading and errors
+            const response = await this.$axios.get(`/groups/${this.conversationId}`);
+            this.groupStub = response.data;
+            this.newName = this.groupStub.groupName;
         },
 
         async saveName() {
@@ -179,7 +215,7 @@ export default {
         <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">{{ isGroup ? 'Group Info' : 'Chat Info' }}</h5>
+                    <h5 class="modal-title">{{ realIsGroup ? 'Group Info' : 'Chat Info' }}</h5>
                     <button type="button" class="btn-close" @click="$emit('close')"></button>
                 </div>
                 <div class="modal-body">
@@ -199,7 +235,7 @@ export default {
                                      :style="{ padding: groupStub.groupPhoto ? '0' : '30px' }"
                                      alt="Photo">
                                      
-                                <button v-if="isGroup" class="btn btn-sm btn-light position-absolute bottom-0 end-0 rounded-circle border shadow-sm"
+                                <button v-if="realIsGroup" class="btn btn-sm btn-light position-absolute bottom-0 end-0 rounded-circle border shadow-sm"
                                         style="width: 32px; height: 32px; padding: 0;"
                                         title="Change Photo"
                                         :disabled="uploadingPhoto"
@@ -211,7 +247,7 @@ export default {
 
                             <div v-if="!isEditingName" class="d-flex align-items-center gap-2">
                                 <h4 class="m-0">{{ groupStub.groupName }}</h4>
-                                <button v-if="isGroup" class="btn btn-sm btn-link text-secondary p-0" @click="isEditingName = true">
+                                <button v-if="realIsGroup" class="btn btn-sm btn-link text-secondary p-0" @click="isEditingName = true">
                                     <svg class="feather" style="width: 16px; height: 16px;"><use href="/feather-sprite-v4.29.0.svg#edit-2"/></svg>
                                 </button>
                             </div>
@@ -223,7 +259,7 @@ export default {
                         </div>
 
                         <!-- Members List (Groups Only) and Starred Messages Tabs -->
-                         <ul class="nav nav-tabs mb-3" v-if="isGroup">
+                         <ul class="nav nav-tabs mb-3" v-if="realIsGroup">
                              <li class="nav-item">
                                  <a class="nav-link" :class="{active: activeTab === 'members'}" href="#" @click.prevent="activeTab = 'members'">Members</a>
                              </li>
@@ -245,7 +281,7 @@ export default {
                          </ul>
 
                         <!-- MEMBERS TAB CONTENT -->
-                        <div v-if="isGroup && activeTab === 'members'">
+                        <div v-if="realIsGroup && activeTab === 'members'">
                             <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                  <h6 class="m-0">Members ({{ groupStub.members?.length || 0 }})</h6>
                                  <button v-if="!isAddingMember" class="btn btn-sm btn-link" @click="isAddingMember = true">+ Add</button>

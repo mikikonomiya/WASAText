@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"wasatext/service/api/reqcontext"
@@ -31,7 +30,6 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 	// DEBUG
-	fmt.Printf("[DEBUG] React Request: MsgID=%s, User=%s, Emoji=%s\n", messageID, myID, body.Emoticon)
 
 	// 3. Validation (simple length check)
 	// The regex in YAML is complex '^\P{L}\s*$' (unicode non-letter),

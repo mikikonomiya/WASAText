@@ -14,18 +14,47 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]Conversation, error) {
 	// 1. Go to 'participants' table.
 	// 2. Find rows where user_id matches me.
 	// 3. Join with 'conversations' table to get the chat details.
-	// 4. Order by 'updated_at'	// Returns all conversations where the user is a participant
+	// 1. SELECT raw fields.
+	// 2. Filter deleted messages per user.
+	// 3. Exclude self-sent messages from unread count using the userID explicitly.
 	rows, err = db.c.Query(`
-		SELECT c.conversation_id, c.name, c.photo_id, c.last_message, c.updated_at,
-		(SELECT COUNT(*) 
-		 FROM messages m 
-		 WHERE m.conversation_id = c.conversation_id 
-		 AND m.created_at > p.last_seen
+		SELECT c.conversation_id, c.name, c.photo_id, 
+		(
+			SELECT m.content FROM messages m 
+			WHERE m.conversation_id = c.conversation_id 
+			AND m.message_id NOT IN (SELECT dm.message_id FROM deleted_messages dm WHERE dm.user_id = ?)
+			ORDER BY m.created_at DESC, m.message_id DESC LIMIT 1
+		) as last_msg_content,
+		(
+			SELECT m.kind FROM messages m 
+			WHERE m.conversation_id = c.conversation_id 
+			AND m.message_id NOT IN (SELECT dm.message_id FROM deleted_messages dm WHERE dm.user_id = ?)
+			ORDER BY m.created_at DESC, m.message_id DESC LIMIT 1
+		) as last_msg_kind,
+		(
+			SELECT m.sender_id FROM messages m 
+			WHERE m.conversation_id = c.conversation_id 
+			AND m.message_id NOT IN (SELECT dm.message_id FROM deleted_messages dm WHERE dm.user_id = ?)
+			ORDER BY m.created_at DESC, m.message_id DESC LIMIT 1
+		) as last_msg_sender,
+		(
+			SELECT m.created_at FROM messages m 
+			WHERE m.conversation_id = c.conversation_id 
+			AND m.message_id NOT IN (SELECT dm.message_id FROM deleted_messages dm WHERE dm.user_id = ?)
+			ORDER BY m.created_at DESC, m.message_id DESC LIMIT 1
+		) as last_msg_at,
+		(
+			SELECT COUNT(*) FROM messages m 
+			WHERE m.conversation_id = c.conversation_id 
+			AND m.created_at > p.last_seen
+			AND m.sender_id != ? -- Explicitly exclude current user
+			AND m.message_id NOT IN (SELECT dm.message_id FROM deleted_messages dm WHERE dm.user_id = ?)
 		) as unread_count
 		FROM conversations c
 		JOIN participants p ON c.conversation_id = p.conversation_id
 		WHERE p.user_id = ?
-		ORDER BY c.updated_at DESC`, userID)
+		ORDER BY last_msg_at DESC, c.updated_at DESC`,
+		userID, userID, userID, userID, userID, userID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -34,10 +63,10 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]Conversation, error) {
 	var chats []Conversation
 	for rows.Next() {
 		var c Conversation
-		var name, photoID, lastMessage, updatedAt sql.NullString
+		var name, photoID, lastContent, lastKind, lastSenderID, updatedAt sql.NullString
 		var unreadCount int
 
-		if err := rows.Scan(&c.ID, &name, &photoID, &lastMessage, &updatedAt, &unreadCount); err != nil {
+		if err := rows.Scan(&c.ID, &name, &photoID, &lastContent, &lastKind, &lastSenderID, &updatedAt, &unreadCount); err != nil {
 			return nil, err
 		}
 
@@ -53,9 +82,33 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]Conversation, error) {
 			c.IsGroup = false
 		}
 		// ...
-		if lastMessage.Valid {
-			c.LastMessage = lastMessage.String
+		// Format Preview
+		if lastContent.Valid {
+			preview := lastContent.String
+			if lastKind.String == "image" {
+				preview = "[Photo]"
+				if lastContent.String != "" {
+					preview = "[Photo] " + lastContent.String
+				}
+			}
+
+			// Add prefix
+			if lastSenderID.Valid && lastSenderID.String != "" {
+				// Normalize IDs for comparison
+				if lastSenderID.String == userID {
+					preview = "You: " + preview
+				} else if name.Valid && strings.TrimSpace(name.String) != "" {
+					// Group chat: add sender name
+					var senderName string
+					_ = db.c.QueryRow("SELECT username FROM users WHERE identifier = ?", lastSenderID.String).Scan(&senderName)
+					if senderName != "" {
+						preview = senderName + ": " + preview
+					}
+				}
+			}
+			c.LastMessage = preview
 		}
+
 		if updatedAt.Valid {
 			c.UpdatedAt = updatedAt.String
 		}

@@ -155,9 +155,9 @@ func (db *appdbimpl) GetConversationMessages(conversationID string, myID string)
 // insert the message and update the parent conversation (s.t."Last Message" preview changes).
 func (db *appdbimpl) SendMessage(conversationID string, senderID string, text string, replyTo string) (Message, error) {
 
-	// 1. Security Check: Are you a participant?
+	// 1. Security Check (Are you a participant?)
 	var dummy int
-	err := db.c.QueryRow("SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?", conversationID, senderID).Scan(&dummy)
+	err := db.c.QueryRow(`SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?`, conversationID, senderID).Scan(&dummy)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Message{}, ErrConversationNotFound
 	}
@@ -165,79 +165,67 @@ func (db *appdbimpl) SendMessage(conversationID string, senderID string, text st
 		return Message{}, err
 	}
 
-	// 2. Generate ID
-	messageID, err := GenerateNewID()
+	// 2. Begin Transaction
+	tx, err := db.c.Begin()
+	if err != nil {
+		return Message{}, err
+	}
+	defer tx.Rollback()
+
+	// 3. Insert the message
+	newMessageID, err := GenerateNewID()
 	if err != nil {
 		return Message{}, err
 	}
 
-	// 3. Insert Message
-	// kind is 'text'
-	_, err = db.c.Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO messages (message_id, conversation_id, sender_id, content, kind, reply_to, created_at) 
 		VALUES (?, ?, ?, ?, 'text', ?, CURRENT_TIMESTAMP)`,
-		messageID, conversationID, senderID, text, sql.NullString{String: replyTo, Valid: replyTo != ""})
+		newMessageID, conversationID, senderID, text, replyTo)
 	if err != nil {
 		return Message{}, err
 	}
 
-	// 4. Update Conversation Metadata (Last Message & Time)
-	// We truncate text to 50 chars for the preview to save space (optional, but good practice)
-	preview := text
-	if len(preview) > 50 {
-		preview = preview[:47] + "..."
-	}
-	_, err = db.c.Exec(`
-		UPDATE conversations 
-		SET last_message = ?, updated_at = CURRENT_TIMESTAMP 
-		WHERE conversation_id = ?`,
-		preview, conversationID)
-	if err != nil {
-		// fmt.Printf("[DEBUG] SendMessage UPDATE failed for conv %s: %v\n", conversationID, err)
-		return Message{}, err
-	}
-	// rowsAff, _ := res.RowsAffected()
-	// fmt.Printf("[DEBUG] SendMessage UPDATE success for conv %s. Rows affected: %d. Preview: '%s'\n", conversationID, rowsAff, preview)
-
-	// 5. Return the full object
-
-	// We need to fetch the 'created_at' time that the DB just generated
-	var createdAt string
-	err = db.c.QueryRow("SELECT created_at FROM messages WHERE message_id = ?", messageID).Scan(&createdAt)
+	// 4. Update Conversation Metadata (Preview & Time)
+	_, err = tx.Exec(`
+		UPDATE conversations SET last_message = ?, updated_at = CURRENT_TIMESTAMP WHERE conversation_id = ?`,
+		text, conversationID)
 	if err != nil {
 		return Message{}, err
 	}
 
-	// Fetch my Username to return in SenderName
-	var myUsername string
-	err = db.c.QueryRow("SELECT username FROM users WHERE identifier = ?", senderID).Scan(&myUsername)
+	// 5. Update last_seen for myself
+	_, err = tx.Exec(`
+		UPDATE participants 
+		SET last_seen = (SELECT created_at FROM messages WHERE message_id = ?)
+		WHERE conversation_id = ? AND user_id = ?`,
+		newMessageID, conversationID, senderID)
 	if err != nil {
 		return Message{}, err
 	}
 
-	// Fetch ReplyTo details if applicable?
-	// Usually frontend has it, but consistent return is good.
-	// Here we just return what we inserted.
-	// If replyTo was valid, we assume frontend knows who it was.
-	// Ideally we should look it up if we want to be 100% correct, but simple return is okay for immediate feedback.
+	// 6. Commit
+	if err := tx.Commit(); err != nil {
+		return Message{}, err
+	}
 
-	return Message{
-		ID:             messageID,
-		ConversationID: conversationID,
-		SenderID:       senderID,
-		SenderName:     myUsername,
-		Content:        text,
-		Kind:           "text",
-		ReplyTo:        replyTo,
-		CreatedAt:      createdAt,
-	}, nil
+	// 7. Get the object to return
+	var m Message
+	err = db.c.QueryRow(`
+		SELECT m.message_id, m.conversation_id, m.sender_id, u.username, m.content, m.kind, m.created_at, m.reply_to
+		FROM messages m
+		JOIN users u ON m.sender_id = u.identifier
+		WHERE m.message_id = ?`, newMessageID).Scan(
+		&m.ID, &m.ConversationID, &m.SenderID, &m.SenderName, &m.Content, &m.Kind, &m.CreatedAt, &m.ReplyTo)
+
+	return m, err
 }
 
 func (db *appdbimpl) SendPhotoMessage(conversationID string, senderID string, photoID string, caption string, replyTo string) error {
 
-	// 1. Security Check: Are you a participant?
+	// Security check (already assumed from sendMessage pattern)
 	var dummy int
-	err := db.c.QueryRow("SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?", conversationID, senderID).Scan(&dummy)
+	err := db.c.QueryRow(`SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?`, conversationID, senderID).Scan(&dummy)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrConversationNotFound
 	}
@@ -245,35 +233,48 @@ func (db *appdbimpl) SendPhotoMessage(conversationID string, senderID string, ph
 		return err
 	}
 
-	// 2. Generate Message ID
-	messageID, err := GenerateNewID()
+	tx, err := db.c.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	msgID, err := GenerateNewID()
 	if err != nil {
 		return err
 	}
 
-	// 3. Insert Message
-	// kind is 'image'. Content is caption. PhotoSource is photoID.
-	_, err = db.c.Exec(`
-		INSERT INTO messages (message_id, conversation_id, sender_id, content, photo_source, kind, reply_to, created_at) 
-		VALUES (?, ?, ?, ?, ?, 'image', ?, CURRENT_TIMESTAMP)`,
-		messageID, conversationID, senderID, caption, photoID, sql.NullString{String: replyTo, Valid: replyTo != ""})
+	_, err = tx.Exec(`
+		INSERT INTO messages (message_id, conversation_id, sender_id, content, kind, photo_source, reply_to, created_at) 
+		VALUES (?, ?, ?, ?, 'image', ?, ?, CURRENT_TIMESTAMP)`,
+		msgID, conversationID, senderID, caption, photoID, replyTo)
 	if err != nil {
 		return err
 	}
 
-	// 4. Update Conversation Metadata
-	// For images, the "last message" preview is usually "[Image]" or "Photo"
+	// Update Conversation with preview "[Photo] caption"
 	preview := "[Photo]"
 	if caption != "" {
 		preview = "[Photo] " + caption
 	}
-	_, err = db.c.Exec(`
-		UPDATE conversations 
-		SET last_message = ?, updated_at = CURRENT_TIMESTAMP 
-		WHERE conversation_id = ?`,
+	_, err = tx.Exec(`
+		UPDATE conversations SET last_message = ?, updated_at = CURRENT_TIMESTAMP WHERE conversation_id = ?`,
 		preview, conversationID)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// Update last_seen for myself
+	_, err = tx.Exec(`
+		UPDATE participants 
+		SET last_seen = (SELECT created_at FROM messages WHERE message_id = ?)
+		WHERE conversation_id = ? AND user_id = ?`,
+		msgID, conversationID, senderID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // This query is very similar to GetConversationMessages but simpler: we only want the
@@ -413,52 +414,40 @@ func (db *appdbimpl) SearchMessages(myID string, query string) ([]Message, error
 
 	return messages, nil
 }
-
 func (db *appdbimpl) ForwardMessage(myID string, sourceMsgID string, destConvID string) error {
 
-	// 1. Fetch Source Message Content
-	// We join with participants to ensure the user (myID) is allowed to SEE the source message.
+	// 1. Security & Availability check
+	var senderID string
 	var content string
 	var kind string
-	var photoSource sql.NullString // Handle potential NULL photo_source
-
+	var photoSource sql.NullString
 	err := db.c.QueryRow(`
-		SELECT m.content, m.kind, m.photo_source
-		FROM messages m
-		JOIN participants p ON m.conversation_id = p.conversation_id
-		WHERE m.message_id = ? AND p.user_id = ?`,
-		sourceMsgID, myID).Scan(&content, &kind, &photoSource)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return errors.New("source message not found or access denied")
-	}
+		SELECT sender_id, content, kind, photo_source FROM messages WHERE message_id = ?`,
+		sourceMsgID).Scan(&senderID, &content, &kind, &photoSource)
 	if err != nil {
 		return err
 	}
 
-	// 2. Check Destination Permission
-	// Ensure user (myID) is a participant in the destination chat
+	// 2. Permissions (Are you in the destination chat?)
 	var dummy int
-	err = db.c.QueryRow(`
-		SELECT 1 FROM participants 
-		WHERE conversation_id = ? AND user_id = ?`,
-		destConvID, myID).Scan(&dummy)
-
+	err = db.c.QueryRow(`SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?`, destConvID, myID).Scan(&dummy)
 	if errors.Is(err, sql.ErrNoRows) {
-		return errors.New("destination conversation not found or access denied")
+		return ErrConversationNotFound
 	}
+
+	tx, err := db.c.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 3. Insert Forwarded Message
+	newMessageID, err := GenerateNewID()
 	if err != nil {
 		return err
 	}
 
-	// 3. Create the New Message (The Forward)
-	// We generate a NEW ID for this forwarded message.
-	newMessageID, err := GenerateNewID() // Use the public helper
-	if err != nil {
-		return err
-	}
-
-	_, err = db.c.Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO messages (message_id, conversation_id, sender_id, content, kind, photo_source, is_forwarded, created_at) 
 		VALUES (?, ?, ?, ?, ?, ?, TRUE, CURRENT_TIMESTAMP)`,
 		newMessageID, destConvID, myID, content, kind, photoSource)
@@ -466,30 +455,92 @@ func (db *appdbimpl) ForwardMessage(myID string, sourceMsgID string, destConvID 
 		return err
 	}
 
-	// 4. Update Destination Conversation Metadata (Preview & Time)
-	// Set last_message to "Forwarded: <content>" or just content
-	preview := "Forwarded: " + content
+	// 4. Update Destination Conversation Metadata
+	preview := content
 	if kind == "image" {
-		preview = "Forwarded: [Photo]"
+		preview = "[Photo]"
+		if content != "" {
+			preview = "[Photo] " + content
+		}
 	}
+	_, err = tx.Exec(`
+		UPDATE conversations SET last_message = ?, updated_at = CURRENT_TIMESTAMP WHERE conversation_id = ?`,
+		preview, destConvID)
+	if err != nil {
+		return err
+	}
+
+	// 5. Update last_seen for myself
+	_, err = tx.Exec(`
+		UPDATE participants 
+		SET last_seen = (SELECT created_at FROM messages WHERE message_id = ?)
+		WHERE conversation_id = ? AND user_id = ?`,
+		newMessageID, destConvID, myID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// updateConversationPreview re-calculates the last message and updated_at for a conversation.
+// This is called after SendMessage and DeleteMessage (for everyone).
+func (db *appdbimpl) updateConversationPreview(conversationID string) error {
+	var lastMsg sql.NullString
+	var lastKind sql.NullString
+	var lastCreatedAt sql.NullString
+
+	// 1. Find the truly latest message in the DB
+	err := db.c.QueryRow(`
+		SELECT content, kind, created_at 
+		FROM messages 
+		WHERE conversation_id = ? 
+		ORDER BY created_at DESC 
+		LIMIT 1`, conversationID).Scan(&lastMsg, &lastKind, &lastCreatedAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		// No messages left! Reset preview.
+		_, err := db.c.Exec(`
+			UPDATE conversations 
+			SET last_message = NULL, updated_at = CURRENT_TIMESTAMP 
+			WHERE conversation_id = ?`, conversationID)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+
+	// 2. Format preview
+	preview := "..."
+	if lastKind.String == "image" {
+		preview = "[Photo]"
+		if lastMsg.Valid && lastMsg.String != "" {
+			preview = "[Photo] " + lastMsg.String
+		}
+	} else if lastMsg.Valid {
+		preview = lastMsg.String
+	}
+
 	if len(preview) > 50 {
 		preview = preview[:47] + "..."
 	}
 
+	// 3. Update conversations table
 	_, err = db.c.Exec(`
 		UPDATE conversations 
-		SET last_message = ?, updated_at = CURRENT_TIMESTAMP 
+		SET last_message = ?, updated_at = ?
 		WHERE conversation_id = ?`,
-		preview, destConvID)
+		preview, lastCreatedAt.String, conversationID)
 
 	return err
 }
 
 func (db *appdbimpl) DeleteMessage(messageID string, myID string, scope string) error {
 
-	// 1. Check if message exists and who is the sender
+	// 1. Check if message exists and get conv info
 	var senderID string
-	err := db.c.QueryRow("SELECT sender_id FROM messages WHERE message_id = ?", messageID).Scan(&senderID)
+	var conversationID string
+	err := db.c.QueryRow("SELECT sender_id, conversation_id FROM messages WHERE message_id = ?", messageID).Scan(&senderID, &conversationID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("message not found")
 	}
@@ -506,20 +557,27 @@ func (db *appdbimpl) DeleteMessage(messageID string, myID string, scope string) 
 	switch scope {
 	case "everyone":
 		// HARD DELETE: Remove from DB entirely
-		// (Note: In a real app with Foreign Keys, you might need to delete from 'stars'/'deleted_messages' first
-		//  or set ON DELETE CASCADE in your table creation. SQLite usually requires enabling Foreign Keys manually).
-
-		// Safe approach: Delete references first (manual cascade)
+		// Delete references first (manual cascade)
 		_, _ = db.c.Exec("DELETE FROM stars WHERE message_id = ?", messageID)
 		_, _ = db.c.Exec("DELETE FROM deleted_messages WHERE message_id = ?", messageID)
+		_, _ = db.c.Exec("DELETE FROM reactions WHERE message_id = ?", messageID)
 
 		_, err = db.c.Exec("DELETE FROM messages WHERE message_id = ?", messageID)
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Sync sidebar preview (global)
+		_ = db.updateConversationPreview(conversationID)
+		return nil
 
 	case "me":
 		// SOFT DELETE: Add to deleted_messages table
-		// IGNORE means "if already inserted, do nothing"
 		_, err = db.c.Exec("INSERT OR IGNORE INTO deleted_messages (user_id, message_id) VALUES (?, ?)", myID, messageID)
+
+		// Note: We don't update the global conversation preview for 'me' deletes
+		// because others still see it. To fix the sidebar for THIS user,
+		// the GetMyConversations query should be improved.
 		return err
 
 	default:

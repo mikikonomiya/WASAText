@@ -88,30 +88,10 @@ export default {
         },
         openInfoModal(c) {
             this.selectedConvId = c.conversationId;
-            this.selectedConvName = c.conversationName; // Might be null for DMs in DB, but usually filled by backend? 
-            // Wait, backend 'GetMyConversations' FILLS c.Name (Step 1718). YES.
-            // So c.conversationName IS populated even for DMs.
-            // We need to distinguish Group vs DM roughly.
-            // The backend fills c.Name for DMs using `otherUsername`.
-            // But how do we know if it is a Group?
-            // "Groups" usually have a non-empty name in the DB. "DMs" have empty name.
-            // But the JSON response always has `conversationName`.
-            // We can check if `c.conversationPhoto` is present? No, DMs can have photos now.
-            // Maybe we assume: If I can "Leave" it, it's a group.
-            // But we don't know that here.
-            // Let's rely on the heuristic: "Does it look like a group?"
-            // OR we can pass a prop `isGroup` based on... nothing solid in `conversations` list response.
-            // Wait, `GetMyConversations` returns `Conversation`.
-            // If we look at `c.Name` in `GetMyConversations`, for DMs it is set to `otherUsername`.
-            // Ideally we should have a `type` field.
-            // For now, let's treat *everything* as potentially having info.
-            // `GroupSettingsModal` handles `isGroup` prop to hide "Add Member" / "Leave".
-            // How do we set `isGroup` properly?
-            // If the user created a Group named "Alice", it looks like a DM.
-            // Let's assume everything is a group unless we know otherwise? No, that enables "Add Member".
-            // Safe bet: Pass `false` for `isGroup` unless we are sure?
-            // Now we can rely on the backend `isGroup` field!
+            // For DMs, conversationName is empty, so use targetUser (the other person's name)
+            this.selectedConvName = c.conversationName || c.targetUser || "Chat";
             this.selectedConvIsGroup = !!c.isGroup; 
+            console.log("Opening Info Modal. Name:", this.selectedConvName, "IsGroup:", c.isGroup);
             this.selectedConvObj = c;
             this.showInfoModal = true;
         },
@@ -124,7 +104,13 @@ export default {
 			this.loading = true;
 			try {
 				let response = await this.$axios.get("/conversations");
-				this.conversations = response.data;
+				this.conversations = response.data.map(c => {
+                    // Secondary guard: if I sent the last message, unreadCount MUST be 0
+                    if (c.lastMessagePreview && c.lastMessagePreview.startsWith("You: ")) {
+                        c.unreadCount = 0;
+                    }
+                    return c;
+                });
 			} catch (e) {
 				console.error(e);
 			}
@@ -246,9 +232,6 @@ export default {
                                         <img v-if="c.conversationPhoto" :src="c.conversationPhoto" alt="" style="width: 100%; height: 100%; object-fit: cover;">
                                         <span v-else class="fw-bold text-secondary" style="font-size: 1.1rem;">{{ (c.conversationName || '?').charAt(0).toUpperCase() }}</span>
                                     </div>
-                                    <span v-if="c.unreadCount > 0" class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                                        <span class="visually-hidden">New alerts</span>
-                                    </span>
                                 </div>
                                 
                                 <RouterLink :to="'/conversations/' + c.conversationId" class="text-decoration-none flex-grow-1 text-body overflow-hidden ps-2" @click="closeSidebar" style="min-width: 0;">
@@ -283,7 +266,7 @@ export default {
 			</nav>
 
 			<main class="col-md-9 ms-sm-auto col-lg-9 h-100 p-0">
-				<RouterView @profile-updated="fetchMyProfile" />
+				<RouterView :conversations="conversations" :my-username="username" @profile-updated="fetchMyProfile" @refresh-conversations="refreshConversations" />
 			</main>
 		</div>
 	</div>

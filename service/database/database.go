@@ -247,8 +247,8 @@ type User struct {
 
 type Conversation struct {
 	ID          string `json:"conversationId"`
-	Name        string `json:"conversationName,omitempty"` // "omitempty" hides this field if empty
-	Photo       string `json:"conversationPhoto"`          // New field
+	Name        string `json:"conversationName"`  // Removed omitempty to force field presence
+	Photo       string `json:"conversationPhoto"` // New field
 	LastMessage string `json:"lastMessagePreview"`
 	UpdatedAt   string `json:"lastMessageTimestamp"`
 	UnreadCount int    `json:"unreadCount"` // New field

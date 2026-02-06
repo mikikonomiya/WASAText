@@ -8,12 +8,13 @@ import ReactionListModal from '../components/ReactionListModal.vue'
 
 export default {
     components: { MessageItem, ForwardModal, GroupSettingsModal, ImageViewerModal, DeleteMessageModal, ReactionListModal },
+    props: ['conversations', 'myUsername'], // Receiving from App.vue
 	data() {
 		return {
 			messages: [],
 			newMessage: "",
             loading: false,
-            conversationName: "",
+            // conversationName: "", // REMOVED: Using computed property
             selectedFile: null,
             replyingTo: null, // Message object being replied to
 
@@ -51,7 +52,15 @@ export default {
             return this.$route.params.conversationId;
         },
         conversationTitle() {
-            if (this.conversationName) return this.conversationName;
+             // Priority 1: Name from Conversations List (Reactive via Props)
+             if (this.conversations) {
+                 const c = this.conversations.find(c => c.conversationId === this.conversationId);
+                 if (c && c.conversationName) return c.conversationName;
+            }
+            // Priority 2: Fallback to sender name in messages (for DM without list entry yet)
+            const other = this.messages.find(m => m.senderName !== localStorage.getItem("username"));
+            if (other) return other.senderName;
+            
             return "Chat";
         }
     },
@@ -70,19 +79,7 @@ export default {
                 let response = await this.$axios.get(`/conversations/${this.conversationId}/messages`);
                 this.messages = response.data;
                 
-                // Get Title from Root
-                if (this.$root.conversations) {
-                    const conv = this.$root.conversations.find(c => c.conversationId === this.conversationId);
-                    if (conv) {
-                        this.conversationName = conv.conversationName;
-                    } else {
-                         // Fallback: Use "Other Person's Name" from messages for DM
-                         const other = this.messages.find(m => m.senderName !== localStorage.getItem("username"));
-                         if (other) {
-                             this.conversationName = other.senderName;
-                         }
-                    }
-                }
+                // Note: Title calculation moved to computed property 'conversationTitle'
                 
                 // Mark as Seen
                 await this.$axios.put(`/conversations/${this.conversationId}/seen`);
@@ -168,6 +165,7 @@ export default {
                 if (this.selectionMode) {
                     this.toggleSelectionMode();
                 }
+                this.$emit('refresh-conversations'); // Update sidebar
             } catch (e) {
                 alert("Error forwarding message: " + (e.response?.data?.message || e.toString()));
             }
@@ -176,12 +174,11 @@ export default {
         // Group Settings Logic
         handleNameUpdate(newName) {
             this.conversationName = newName;
-            // Also notify root to update sidebar list immediately? 
-            // The sidebar polls independently, but we can try to force valid updates if we had a global bus.
-            // For now, local update is good feedback.
+            this.$emit('refresh-conversations');
         },
         handleLeave() {
             this.showSettingsModal = false;
+            this.$emit('refresh-conversations');
             this.$router.push('/'); // Go back to home
         },
 
@@ -197,6 +194,7 @@ export default {
                 });
                 // Remove from local list immediately (optimistic UI)
                 this.messages = this.messages.filter(m => m.messageId !== messageId);
+                this.$emit('refresh-conversations'); // Sync sidebar
             } catch (e) {
                 alert("Error deleting message: " + (e.response?.data?.error || e.toString()));
             }
@@ -260,8 +258,9 @@ export default {
                 await this.$axios.post(`/conversations/${this.conversationId}/messages`, payload);
                 this.newMessage = "";
                 this.replyingTo = null; // Clear reply after send
-                this.refresh();
+                await this.refresh();
                 this.$nextTick(() => this.scrollToBottom());
+                this.$emit('refresh-conversations');
             } catch (e) {
                 alert("Error sending message: " + e.toString());
             }
@@ -291,8 +290,9 @@ export default {
                 this.newMessage = ""; 
                 this.selectedFile = null; // Clear file after send
                 this.replyingTo = null;
-                this.refresh();
+                await this.refresh();
                 this.$nextTick(() => this.scrollToBottom());
+                this.$emit('refresh-conversations');
             } catch (e) {
                 alert("Error sending photo: " + (e.response?.data?.message || e.toString()));
             }
@@ -399,7 +399,7 @@ export default {
                     v-for="msg in filteredMessages" 
                     :key="msg.messageId" 
                     :message="msg" 
-                    :is-me="msg.senderName === $root.username" 
+                    :is-me="msg.senderName === myUsername" 
                     :selectable="selectionMode"
                     :selected="selectedMessages.includes(msg.messageId)"
                     @reply="setReply" 
@@ -453,7 +453,7 @@ export default {
         <!-- Modals -->
         <ForwardModal 
             v-if="showForwardModal" 
-            :conversations="$root.conversations" 
+            :conversations="conversations" 
             :current-conversation-id="conversationId"
             @close="showForwardModal = false" 
             @confirm="onForwardConfirm" 
@@ -462,9 +462,9 @@ export default {
         <GroupSettingsModal
             v-if="showSettingsModal"
             :conversation-id="conversationId"
-            :initial-name="conversationName"
-            :conversation="$root.conversations.find(c => c.conversationId === conversationId)"
-            :is-group="!!($root.conversations.find(c => c.conversationId === conversationId)?.isGroup)"
+            :initial-name="conversationTitle"
+            :conversation="(conversations || []).find(c => c.conversationId === conversationId)"
+            :is-group="!!((conversations || []).find(c => c.conversationId === conversationId)?.isGroup)"
             @close="showSettingsModal = false"
             @update-name="handleNameUpdate"
             @leave="handleLeave"
@@ -479,7 +479,7 @@ export default {
         <DeleteMessageModal
             v-if="showDeleteModal"
             :message="messageToDelete"
-            :is-me="messageToDelete?.senderName === $root.username"
+            :is-me="messageToDelete?.senderName === myUsername"
             @close="showDeleteModal = false"
             @confirm="executeDelete"
         />
