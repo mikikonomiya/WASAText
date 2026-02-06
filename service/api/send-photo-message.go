@@ -47,8 +47,8 @@ func (rt *_router) sendPhotoMessage(w http.ResponseWriter, r *http.Request, ps h
 	filename := photoID
 
 	// 5. Save File to Disk
-	dstPath := filepath.Join("./doc/images", filename)
-	_ = os.MkdirAll("./doc/images", 0755) // Ensure folder exists
+	dstPath := filepath.Join("./data/images", filename)
+	_ = os.MkdirAll("./data/images", 0755) // Ensure folder exists
 
 	dst, err := os.Create(dstPath)
 	if err != nil {

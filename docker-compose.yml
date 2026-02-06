@@ -9,9 +9,10 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/app/data
-      - images-data:/app/doc/images
+      - images-data:/app/data/images
     environment:
       - API_PORT=3000
+      - CFG_DB_FILENAME=/app/data/decaf.db
 
   frontend:
     build:

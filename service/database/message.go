@@ -143,6 +143,10 @@ func (db *appdbimpl) GetConversationMessages(conversationID string, myID string)
 			r.IsMe = (isMeVal.Valid && isMeVal.Int64 > 0)
 			reactions = append(reactions, r)
 		}
+		if err := rRows.Err(); err != nil {
+			rRows.Close()
+			return nil, err
+		}
 		rRows.Close()
 
 		messages[i].Reactions = reactions

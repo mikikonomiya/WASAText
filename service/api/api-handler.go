@@ -19,30 +19,29 @@ func (rt *_router) Handler() http.Handler {
 	// CONVERSATIONS
 	rt.router.GET("/conversations", rt.wrap(rt.getMyConversations))
 	rt.router.POST("/conversations", rt.wrap(rt.startConversation))
-	// rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversation)) // Removed or repurposed
+	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversationMessages)) // Matches YAML /conversations/{conversationId} GET
 	rt.router.DELETE("/conversations/:conversationId", rt.wrap(rt.deleteConversation))
-	rt.router.PUT("/conversations/:conversationId/seen", rt.wrap(rt.setConversationSeen)) // NEW
+	rt.router.PUT("/conversations/:conversationId/seen", rt.wrap(rt.setConversationSeen))
 
 	// MESSAGES
-	rt.router.GET("/conversations/:conversationId/messages", rt.wrap(rt.getConversationMessages)) // Updated path
 	rt.router.POST("/conversations/:conversationId/messages", rt.wrap(rt.sendMessage))
 	rt.router.POST("/conversations/:conversationId/photos", rt.wrap(rt.sendPhotoMessage))
 	rt.router.GET("/conversations/:conversationId/photos", rt.wrap(rt.getConvPhotos))
 	rt.router.GET("/conversations/:conversationId/messages/starred", rt.wrap(rt.getConvStarredMessages))
-	rt.router.POST("/conversations/:conversationId/forward", rt.wrap(rt.forwardMessage)) // Changed to avoid 405 conflict
+
 	rt.router.GET("/messages", rt.wrap(rt.searchMessages))
-	// rt.router.POST("/messages/forwarded", rt.wrap(rt.forwardMessage)) // Removed
+	rt.router.POST("/messages/forwarded", rt.wrap(rt.forwardMessage)) // Matches YAML /messages/forwarded POST
 	rt.router.DELETE("/messages/:messageId", rt.wrap(rt.deleteMessage))
 
 	// STARRED & REACTIONS
-	// STARRED & REACTIONS
-	rt.router.GET("/starred", rt.wrap(rt.getAllStarredMessages)) // Moved to root to avoid conflicts
+	rt.router.GET("/messages/starred", rt.wrap(rt.getAllStarredMessages)) // Matches YAML /messages/starred GET
 	rt.router.PUT("/messages/:messageId/star", rt.wrap(rt.starMessage))
 	rt.router.DELETE("/messages/:messageId/star", rt.wrap(rt.unstarMessage))
-	// Simplified paths (removed /me suffix)
-	rt.router.PUT("/reactions/:messageId", rt.wrap(rt.commentMessage))
-	rt.router.DELETE("/reactions/:messageId", rt.wrap(rt.uncommentMessage))
-	rt.router.GET("/messages/:messageId/reactions", rt.wrap(rt.getMessageReactions))
+
+	// Reactions
+	rt.router.PUT("/messages/:messageId/reactions/me", rt.wrap(rt.commentMessage))      // Matches YAML /messages/{messageId}/reactions/me PUT
+	rt.router.DELETE("/messages/:messageId/reactions/me", rt.wrap(rt.uncommentMessage)) // Matches YAML /messages/{messageId}/reactions/me DELETE
+	//rt.router.GET("/messages/:messageId/reactions", rt.wrap(rt.getMessageReactions))    // Helper, not in snippet but likely acceptable
 
 	// GROUPS
 	rt.router.POST("/groups", rt.wrap(rt.createGroup))
@@ -53,7 +52,7 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.PUT("/groups/:groupId/photo", rt.wrap(rt.setGroupPhoto))
 
 	// STATIC IMAGES
-	rt.router.ServeFiles("/images/*filepath", http.Dir("./doc/images"))
+	rt.router.ServeFiles("/images/*filepath", http.Dir("./data/images"))
 
 	return rt.router
 }

@@ -16,7 +16,20 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
 			proxy: {
 				'/session': { target: 'http://host.docker.internal:3000', changeOrigin: true },
 				'/users': { target: 'http://host.docker.internal:3000', changeOrigin: true },
-				'/user': { target: 'http://host.docker.internal:3000', changeOrigin: true }, // Re-added!
+				'/user': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/conversations': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/groups': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/images': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/messages': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/reactions': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/starred': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+			}
+		},
+		preview: {
+			proxy: {
+				'/session': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/users': { target: 'http://host.docker.internal:3000', changeOrigin: true },
+				'/user': { target: 'http://host.docker.internal:3000', changeOrigin: true },
 				'/conversations': { target: 'http://host.docker.internal:3000', changeOrigin: true },
 				'/groups': { target: 'http://host.docker.internal:3000', changeOrigin: true },
 				'/images': { target: 'http://host.docker.internal:3000', changeOrigin: true },
@@ -28,7 +41,7 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
 	};
 	ret.define = {
 		// Do not modify this constant, it is used in the evaluation.
-		"__API_URL__": JSON.stringify(""),
+		"__API_URL__": JSON.stringify("http://localhost:3000"),
 		"__VUE_PROD_HYDRATION_MISMATCH_DETAILS__": JSON.stringify(false),
 	};
 	return ret;

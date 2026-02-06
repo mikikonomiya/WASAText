@@ -1,25 +1,12 @@
 <script>
 export default {
-    props: ['messageId'],
-    emits: ['close'],
-    data() {
-        return {
-            reactions: [],
-            loading: true,
-            error: null
+    props: {
+        reactions: {
+            type: Array,
+            default: () => []
         }
     },
-    async mounted() {
-        try {
-            const response = await this.$axios.get(`/messages/${this.messageId}/reactions`);
-            this.reactions = response.data || [];
-        } catch (e) {
-            this.error = "Failed to load reactions";
-            console.error(e);
-        } finally {
-            this.loading = false;
-        }
-    }
+    emits: ['close']
 }
 </script>
 
@@ -33,13 +20,7 @@ export default {
                     <button type="button" class="btn-close" @click="$emit('close')"></button>
                 </div>
                 <div class="modal-body pt-0" style="max-height: 300px; overflow-y: auto;">
-                    <div v-if="loading" class="text-center p-3">
-                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
-                    </div>
-                    
-                    <div v-else-if="error" class="text-danger small text-center">{{ error }}</div>
-                    
-                    <div v-else-if="reactions.length === 0" class="text-center text-muted small py-3">
+                    <div v-if="reactions.length === 0" class="text-center text-muted small py-3">
                         No reactions yet.
                     </div>
                     

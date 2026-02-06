@@ -42,13 +42,14 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, ps httprou
 	// 4. Create the file on disk
 	// We will save it as "images/<userid>.png"
 	// Ensure the directory exists first!
-	_ = os.MkdirAll("./doc/images", 0755) // Creates doc/images folder if missing
+	const imagePath = "./data/images"
+	_ = os.MkdirAll(imagePath, 0755) // Creates data/images folder if missing
 
 	// we use a random suffix (or timestamp) to avoid browser caching issues when the photo changes.
 	// Simple approach: userID + "_" + randomHex + ".png"
 	rnd, _ := database.GenerateNewID()
 	filename := userID + "_" + rnd + ".png"
-	dstPath := filepath.Join("./doc/images", filename)
+	dstPath := filepath.Join(imagePath, filename)
 
 	dst, err := os.Create(dstPath)
 	if err != nil {

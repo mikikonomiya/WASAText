@@ -76,7 +76,8 @@ export default {
             // this.loading = true; // Don't show spinner on poll
             try {
                 // Fetch messages
-                let response = await this.$axios.get(`/conversations/${this.conversationId}/messages`);
+                // API YAML defines GET /conversations/:id for messages
+                let response = await this.$axios.get(`/conversations/${this.conversationId}`);
                 this.messages = response.data;
                 
                 // Note: Title calculation moved to computed property 'conversationTitle'
@@ -152,9 +153,15 @@ export default {
             if (sourceIds.length === 0) return;
 
             try {
-                await this.$axios.post(`/conversations/${destConvId}/forward`, {
-                    sourceMessageIds: sourceIds
-                });
+                // Backend now expects Single Message Forwarding at POST /messages/forwarded
+                // We must loop and send individual requests
+                for (const msgId of sourceIds) {
+                    await this.$axios.post(`/messages/forwarded`, {
+                        sourceMessageId: msgId,
+                        destinationConversationId: destConvId
+                    });
+                }
+
                 // If forwarding to CURRENT chat, refresh; otherwise, maybe show toast?
                 if (destConvId === this.conversationId) {
                     this.refresh();
@@ -224,9 +231,9 @@ export default {
             
             try {
                 if (isRemoving) {
-                    await this.$axios.delete(`/reactions/${message.messageId}`);
+                    await this.$axios.delete(`/messages/${message.messageId}/reactions/me`);
                 } else {
-                    await this.$axios.put(`/reactions/${message.messageId}`, { emoticon: emoji });
+                    await this.$axios.put(`/messages/${message.messageId}/reactions/me`, { emoticon: emoji });
                 }
                 // Refresh to see update
                 this.refresh(); 
@@ -409,7 +416,7 @@ export default {
                     @toggle-star="toggleStar"
                     @view-image="(src) => selectedImage = src"
                     @delete="confirmDelete"
-                    @view-reactions="(msg) => { reactionMessageId = msg.messageId; showReactionModal = true; }"
+                    @view-reactions="(msg) => { reactionMessage = msg; showReactionModal = true; }"
                 />
             </div>
         </div>
@@ -486,7 +493,7 @@ export default {
 
         <ReactionListModal
             v-if="showReactionModal"
-            :message-id="reactionMessageId"
+            :reactions="reactionMessage ? reactionMessage.reactions : []"
             @close="showReactionModal = false"
         />
 	</div>

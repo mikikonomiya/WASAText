@@ -23,7 +23,7 @@ export default {
             selectedConvName: "",
             selectedConvIsGroup: false,
             selectedConvObj: null,
-            selectedConvObj: null,
+
             myPhoto: null,
             
             // Theme

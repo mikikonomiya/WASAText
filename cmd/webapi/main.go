@@ -45,9 +45,14 @@ import (
 // main is the program entry point. The only purpose of this function is to call run() and set the exit code if there is
 // any error
 func main() {
-	fmt.Println(">>> SERVER STARTING <<<")
+	// Initialize a simple logger for the main entry point
+	// (run function initiates its own configured logger, but we need one here for startup/exit logs)
+	log := logrus.New()
+	log.SetOutput(os.Stdout)
+
+	log.Info(">>> SERVER STARTING <<<")
 	if err := run(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "error: ", err)
+		log.WithError(err).Error("server fatal error")
 		os.Exit(1)
 	}
 }
