@@ -342,35 +342,41 @@ export default {
 <template>
     <div class="d-flex flex-column h-100 position-relative">
         <!-- Header -->
-        <div class="border-bottom p-3 bg-body d-flex justify-content-between align-items-center">
-            <h5 class="m-0 text-truncate" style="max-width: 60%;">{{ conversationTitle }}</h5>
+        <div class="p-3 bg-surface d-flex justify-content-between align-items-center shadow-sm" style="z-index: 10;">
+            <div class="d-flex align-items-center gap-2">
+                 <!-- Back button for mobile -->
+                 <button class="btn btn-sm btn-light d-md-none rounded-circle" @click="$router.push('/')">
+                    <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#arrow-left"/></svg>
+                </button>
+                <h5 class="m-0 text-truncate fw-bold text-body" style="max-width: 300px;">{{ conversationTitle }}</h5>
+            </div>
             
             <div class="d-flex gap-2">
                 <!-- Selection Mode Actions -->
                 <div v-if="selectionMode" class="d-flex gap-2 animate__animated animate__fadeIn">
-                    <button class="btn btn-sm btn-primary" @click="handleForward(null)" :disabled="selectedMessages.length === 0">
+                    <button class="btn btn-sm btn-primary rounded-pill px-3" @click="handleForward(null)" :disabled="selectedMessages.length === 0">
                         Forward ({{ selectedMessages.length }})
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="toggleSelectionMode">Cancel</button>
+                    <button class="btn btn-sm btn-light rounded-pill px-3" @click="toggleSelectionMode">Cancel</button>
                 </div>
                 
                 <!-- Default Actions -->
                 <div v-else class="d-flex gap-2 align-items-center">
                     <!-- Search Bar -->
                     <div v-if="isSearching" class="animate__animated animate__fadeInRight d-flex gap-1" style="width: 200px;">
-                        <input type="text" v-model="searchQuery" class="form-control form-control-sm" placeholder="Search..." auto-focus>
-                        <button class="btn btn-sm btn-outline-secondary border-0" @click="isSearching = false; searchQuery = ''">
+                        <input type="text" v-model="searchQuery" class="form-control form-control-sm rounded-pill" placeholder="Search..." auto-focus>
+                        <button class="btn btn-sm btn-light rounded-circle" @click="isSearching = false; searchQuery = ''">
                             <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#x"/></svg>
                         </button>
                     </div>
-                    <button v-else class="btn btn-sm btn-outline-secondary" @click="isSearching = true">
+                    <button v-else class="btn btn-sm btn-light rounded-circle text-muted" @click="isSearching = true">
                         <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
                     </button>
 
-                    <button class="btn btn-sm btn-outline-primary" @click="toggleSelectionMode" title="Select Messages">
+                    <button class="btn btn-sm btn-light rounded-circle text-muted" @click="toggleSelectionMode" title="Select Messages">
                         <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#check-square"/></svg>
                     </button>
-                    <button class="btn btn-sm btn-outline-info" @click="showSettingsModal = true">
+                    <button class="btn btn-sm btn-light rounded-circle text-muted" @click="showSettingsModal = true">
                         <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#info"/></svg>
                     </button>
                 </div>
@@ -378,12 +384,15 @@ export default {
         </div>
 
         <!-- Messages -->
-        <div class="flex-grow-1 overflow-auto p-3 bg-body-tertiary" ref="messageContainer">
+        <div class="flex-grow-1 overflow-auto p-3" style="background-color: var(--app-bg);" ref="messageContainer">
             <div v-if="loading && messages.length === 0" class="text-center mt-5">
                 <LoadingSpinner />
             </div>
             <div v-else-if="messages.length === 0" class="text-center text-muted mt-5">
-                No messages yet. Say hello!
+                <div class="p-4 rounded-4 bg-surface d-inline-block shadow-sm">
+                    <span class="d-block mb-2 fs-4">👋</span>
+                    No messages yet. Say hello!
+                </div>
             </div>
             <div v-else class="d-flex flex-column gap-2">
                 <MessageItem 
@@ -406,10 +415,10 @@ export default {
         </div>
 
         <!-- Input Area -->
-        <div class="border-top p-3 bg-body">
+        <div class="p-3 bg-surface">
             <!-- Reply Preview -->
-            <div v-if="replyingTo" class="mb-2 p-2 border-start border-4 border-primary bg-body-secondary rounded d-flex justify-content-between align-items-center">
-                <div class="small">
+            <div v-if="replyingTo" class="mb-2 p-2 border-start border-4 border-primary bg-body-secondary rounded-3 d-flex justify-content-between align-items-center">
+                <div class="small ps-2">
                     <div class="fw-bold text-primary">Replying to {{ replyingTo.senderName }}</div>
                     <div class="text-truncate text-muted" style="max-width: 300px;">
                         {{ replyingTo.textContent || (replyingTo.photoSource ? '[Photo]' : '') }}
@@ -420,23 +429,23 @@ export default {
 
             <!-- File Preview -->
             <div v-if="selectedFile" class="mb-2 position-relative d-inline-block">
-                <div class="border rounded p-1 d-flex align-items-center gap-2 bg-body-secondary">
-                    <span class="small text-truncate" style="max-width: 200px;">{{ selectedFile.name }}</span>
+                <div class="border rounded-3 p-2 d-flex align-items-center gap-2 bg-light shadow-sm">
+                    <span class="small text-truncate fw-bold" style="max-width: 200px;">{{ selectedFile.name }}</span>
                     <button type="button" class="btn-close small" aria-label="Close" @click="clearFile"></button>
                 </div>
             </div>
 
-            <form @submit.prevent="handleSend" class="d-flex gap-2 align-items-center">
+            <form @submit.prevent="handleSend" class="d-flex gap-2 align-items-center bg-surface p-1 rounded-pill border" style="border-color: var(--input-bg) !important;">
                 <!-- File Button -->
-                 <button type="button" class="btn btn-outline-secondary" @click="$refs.fileInput.click()" title="Attach Photo">
+                 <button type="button" class="btn btn-link text-secondary rounded-circle" @click="$refs.fileInput.click()" title="Attach Photo" style="width: 40px; height: 40px;">
                     <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#image"/></svg>
                 </button>
                 <input type="file" ref="fileInput" class="d-none" accept="image/*" @change="onFileSelected">
                 
-                <input type="text" v-model="newMessage" class="form-control" placeholder="Type a message..." :required="!selectedFile">
+                <input type="text" v-model="newMessage" class="form-control border-0 bg-transparent shadow-none" placeholder="Type a message..." :required="!selectedFile" style="font-size: 0.95rem;">
                 
-                <button type="submit" class="btn btn-primary d-flex align-items-center">
-                    <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#send"/></svg>
+                <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">
+                    <svg class="feather" style="width: 18px; height: 18px;"><use href="/feather-sprite-v4.29.0.svg#send"/></svg>
                 </button>
             </form>
         </div>

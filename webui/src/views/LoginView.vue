@@ -48,4 +48,8 @@ export default {
 </script>
 
 <style scoped>
+.form-control {
+    background-color: var(--app-bg);
+    border-color: transparent;
+}
 </style>

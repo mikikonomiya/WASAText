@@ -25,7 +25,7 @@ body {
 	left: 0;
 	z-index: 100;
 	/* Behind the navbar */
-	padding: 48px 0 0;
+	padding: 0;
 	/* Height of navbar */
 	box-shadow: inset -1px 0 0 rgba(0 0 0 / 10%);
 }
@@ -41,13 +41,17 @@ body {
 .sidebar-sticky {
 	height: calc(100vh - 48px);
 	overflow-x: hidden;
-	overflow-y: auto;
+	overflow-y: hidden;
+	/* Fix header/footer, scroll inner list instead */
 	/* Scrollable contents if viewport is shorter than content. */
 }
 
 .sidebar .nav-link {
-	font-weight: 500;
-	color: var(--bs-body-color);
+	border-radius: 16px;
+	margin: 4px 12px;
+	padding: 12px 16px;
+	transition: all 0.2s ease;
+	color: #A3AED0;
 }
 
 .sidebar .nav-link .feather {
@@ -103,18 +107,229 @@ body {
 }
 
 /*
- * Theme Customizations
+ * Theme Customizations - Pastel Minimalist
  */
-/* Received Message Bubble */
-.bg-message-received {
-	background-color: #ffffff;
-	color: #212529;
+
+:root {
+	/* Color Palette - "Dappr" Inspired (Purple & Cool Gray) */
+	--app-bg: #F4F7FE;
+	/* Cool Light Gray */
+	--sidebar-bg: #FFFFFF;
+	/* Clean White Sidebar */
+
+	/* Primary / Actions */
+	--bs-primary: #6C5CE7;
+	/* Vibrant Purple */
+	--bs-primary-rgb: 108, 92, 231;
+
+	/* Secondary / Accents */
+	--bs-secondary: #A3AED0;
+	/* Muted Blue-Gray */
+
+	/* Message Bubbles */
+	--msg-me-bg: var(--bs-primary);
+	/* Primary Purple */
+	--msg-me-text: #FFFFFF;
+	/* White Text */
+
+	--msg-other-bg: #FFFFFF;
+	/* White Bubble */
+	--msg-other-text: #2B3674;
+	/* Dark Navy Text */
+
+	/* Global Shapes - Less Rounded */
+	--bs-border-radius: 12px !important;
+	--bs-border-radius-lg: 18px !important;
+	--bs-border-radius-sm: 8px !important;
+
+	/* Component Colors (Variables for Dark Mode Support) */
+	--card-bg: #FFFFFF;
+	--input-bg: #FFFFFF;
+	--input-text: #2B3674;
+	--sidebar-active-bg: #E6E3FF;
+	/* Stronger Pastel Lilac */
+	--sidebar-active-text: #2B3674;
+	/* Dark Navy Text */
+
+	/* Force Bootstrap Overrides */
+	--bs-body-bg: var(--app-bg);
+	--bs-body-color: #2B3674;
 }
 
-[data-bs-theme="dark"] .bg-message-received {
-	background-color: #2b3035;
-	/* Dark grey, slightly lighter than bg */
-	color: #e9ecef;
-	/* Light grey text */
-	border: 1px solid #373b3e;
+body {
+	background-color: var(--app-bg);
+	color: #4A4A4A;
+	/* Softer text than pure black */
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Override Boostrap Buttons */
+.btn {
+	border-radius: 20px;
+	font-weight: 600;
+	box-shadow: 0 4px 10px rgba(108, 92, 231, 0.15) !important;
+	/* Purple shadow */
+	transition: all 0.2s ease;
+}
+
+.btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 15px rgba(108, 92, 231, 0.25) !important;
+}
+
+.btn-primary {
+	background-color: var(--bs-primary);
+	border-color: var(--bs-primary);
+	color: white;
+}
+
+/* Inputs */
+.form-control {
+	border-radius: 16px;
+	border: 1px solid transparent;
+	background-color: var(--input-bg);
+	padding: 0.7rem 1.2rem;
+	box-shadow: 0 2px 5px rgba(112, 144, 176, 0.08);
+	/* Cool gray shadow */
+	color: var(--input-text);
+}
+
+.form-control:focus {
+	box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+	/* Purple ring */
+	background-color: var(--input-bg);
+	border-color: var(--bs-primary);
+	color: var(--input-text);
+}
+
+/* Cards */
+.card {
+	border: none;
+	background-color: var(--card-bg);
+	border-radius: var(--bs-border-radius-lg);
+	box-shadow: 0 4px 20px rgba(112, 144, 176, 0.08);
+	/* Cool gray shadow */
+}
+
+/* Sidebar Customization */
+.sidebar {
+	background-color: var(--sidebar-bg);
+	border-right: none !important;
+	box-shadow: 0 0 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.sidebar .nav-link {
+	border-radius: 16px;
+	margin: 4px 12px;
+	padding: 12px 16px;
+	transition: all 0.2s ease;
+	color: #A3AED0;
+}
+
+.sidebar .nav-link.active {
+	background-color: var(--sidebar-active-bg);
+	color: var(--sidebar-active-text);
+	box-shadow: none;
+	font-weight: 700;
+}
+
+/* Ensure icons in active state match text color */
+.sidebar .nav-link.active .feather {
+	color: var(--sidebar-active-text) !important;
+	opacity: 1 !important;
+}
+
+.sidebar .nav-link:hover:not(.active) {
+	background-color: #F4F7FE;
+	color: var(--bs-primary);
+}
+
+/* Received Message Bubble */
+.bg-message-received {
+	background-color: var(--msg-other-bg);
+	color: var(--msg-other-text);
+	border: none !important;
+}
+
+/* Utility for theme-aware backgrounds (replaces bg-white) */
+.bg-surface {
+	background-color: var(--card-bg) !important;
+	color: var(--bs-body-color);
+}
+
+html[data-bs-theme="dark"] {
+	--app-bg: #13131F;
+	/* Deep Void Purple */
+	--sidebar-bg: #1C1C2E;
+	/* Dark Amethyst Surface */
+
+	/* Component Overrides */
+	--card-bg: #1C1C2E;
+	--input-bg: #28283E;
+	/* Lighter Purple-Grey for inputs */
+	--input-text: #FFFFFF;
+
+	--sidebar-active-bg: #28283E;
+	--sidebar-active-text: #FFFFFF;
+
+	--bs-body-bg: var(--app-bg);
+	--bs-body-color: #E0E0E0;
+
+	/* Darker Primary for Dark Mode (Less neon) */
+	--bs-primary: #5848C2;
+	/* Deep Muted Purple */
+	--bs-primary-rgb: 88, 72, 194;
+
+	--msg-other-bg: #28283E;
+	--msg-other-text: #FFFFFF;
+	--msg-me-bg: var(--bs-primary);
+	/* Use darker purple */
+	--msg-me-text: #FFFFFF;
+
+	--bs-secondary: #A3AED0;
+}
+
+/* Fix for btn-light/bg-light in Dark Mode */
+html[data-bs-theme="dark"] .btn-light {
+	background-color: #28283E;
+	border-color: #28283E;
+	color: #E0E0E0;
+}
+
+html[data-bs-theme="dark"] .bg-light {
+	background-color: #1C1C2E !important;
+	/* Match card bg instead of white/gray */
+}
+
+/* Modal Dark Mode Overrides */
+html[data-bs-theme="dark"] .modal-content {
+	background-color: var(--card-bg);
+	color: #FFFFFF;
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-bs-theme="dark"] .modal-header,
+html[data-bs-theme="dark"] .modal-footer {
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-bs-theme="dark"] .btn-close {
+	filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+html[data-bs-theme="dark"] .nav-tabs .nav-link {
+	color: #A3AED0;
+}
+
+html[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+	color: #FFFFFF;
+	background-color: var(--card-bg);
+	border-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) var(--card-bg);
+}
+
+html[data-bs-theme="dark"] .list-group-item {
+	background-color: transparent;
+	/* Let modal bg show through */
+	color: #FFFFFF;
+	border-color: rgba(255, 255, 255, 0.05);
 }

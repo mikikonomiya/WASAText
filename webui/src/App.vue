@@ -193,89 +193,96 @@ export default {
         />
 
 		<div class="row flex-grow-1 g-0 overflow-hidden">
-			<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-body-tertiary sidebar collapse h-100">
+			<nav id="sidebarMenu" class="col-md-3 col-lg-3 d-md-block sidebar collapse h-100 overflow-hidden">
 				<div class="position-sticky pt-3 sidebar-sticky d-flex flex-column h-100">
-					<h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+					<h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-3 mb-1 text-muted text-uppercase">
 						<span>WASAText</span>
                         <div class="d-flex gap-1">
-                            <button class="btn btn-sm btn-outline-secondary" @click="toggleTheme" :title="darkMode ? 'Light Mode' : 'Dark Mode'">
+                            <button class="btn btn-sm btn-outline-secondary border-0" @click="toggleTheme" :title="darkMode ? 'Light Mode' : 'Dark Mode'">
                                 <svg v-if="darkMode" class="feather"><use href="/feather-sprite-v4.29.0.svg#sun"/></svg>
                                 <svg v-else class="feather"><use href="/feather-sprite-v4.29.0.svg#moon"/></svg>
                             </button>
-                            <button class="btn btn-sm btn-outline-secondary" @click="refreshConversations" title="Refresh">
+                            <button class="btn btn-sm btn-outline-secondary border-0" @click="refreshConversations" title="Refresh">
                                 <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#refresh-cw"/></svg>
                             </button>
                         </div>
 					</h6>
 					
                     <!-- Profile Link -->
-                    <div class="mx-3 mt-2 mb-3 p-2 rounded user-profile-card d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center gap-2 text-truncate">
-                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center overflow-hidden" style="width: 32px; height: 32px; font-size: 14px;">
+                    <div class="mx-3 mt-2 mb-3 p-3 rounded-4 user-profile-card d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3 text-truncate" style="min-width: 0;">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center overflow-hidden shadow-sm" style="width: 48px; height: 48px; font-size: 20px;">
                                 <img v-if="myPhoto" :src="myPhoto" alt="" style="width: 100%; height: 100%; object-fit: cover;">
                                 <span v-else class="fw-bold">{{ username?.charAt(0).toUpperCase() }}</span>
                             </div>
-                            <span class="fw-bold text-body text-truncate">{{ username }}</span>
+                            <span class="fw-bold text-body text-truncate fs-5">{{ username }}</span>
                         </div>
                         <RouterLink to="/profile" class="btn btn-sm btn-link text-secondary p-0" title="My Profile">
                              <svg class="feather" style="width: 16px; height: 16px;"><use href="/feather-sprite-v4.29.0.svg#settings"/></svg>
                         </RouterLink>
                     </div>
 
-                    <!-- Search Bar -->
-                    <div class="px-3 mb-2">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-body border-end-0">
-                                <svg class="feather" style="width: 14px; height: 14px;"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
+                    <!-- Search Bar (Pill Style) -->
+                    <div class="px-3 mb-3">
+                         <div class="input-group" style="border-radius: 30px; overflow: hidden; background-color: var(--input-bg);">
+                            <span class="input-group-text border-0 ps-3" style="background: transparent;">
+                                <svg class="feather text-secondary" style="width: 14px; height: 14px;"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
                             </span>
-                            <input type="text" class="form-control border-start-0 ps-0" placeholder="Search chats..." v-model="searchQuery">
-                        </div>
+                            <input type="text" class="form-control border-0 ps-1" placeholder="Search..." v-model="searchQuery" style="background: transparent; font-size: 0.9rem;">
+                         </div>
                     </div>
 					
-					<ul class="nav flex-column mb-auto overflow-auto">
-						<li class="nav-item" v-for="c in filteredConversations" :key="c.conversationId">
-							<div class="nav-link d-flex align-items-center gap-2 p-0" :class="{ 'bg-primary-subtle': $route.path === '/conversations/' + c.conversationId }">
+					<ul class="list-unstyled d-flex flex-column flex-grow-1 overflow-auto px-2 gap-1 w-100" style="min-height: 0;">
+						<li class="nav-item w-100" v-for="c in filteredConversations" :key="c.conversationId">
+                            <!-- Rounded List Item -->
+							<div class="nav-link d-flex align-items-center gap-2 p-2 rounded-3" 
+                                 :class="{ 'active': $route.path === '/conversations/' + c.conversationId, 'bg-surface shadow-sm': $route.path !== '/conversations/' + c.conversationId }"
+                                 style="cursor: pointer;">
+                                
                                 <!-- Avatar Clickable Area -->
-                                <div class="p-2 cursor-pointer" @click.stop.prevent="openInfoModal(c)" title="View Photo">
-                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #ccc; overflow: hidden; flex-shrink: 0;" class="border">
+                                <div class="position-relative flex-shrink-0" @click.stop.prevent="openInfoModal(c)" title="View Photo">
+                                    <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center border" 
+                                         style="width: 42px; height: 42px; background-color: #f0f2f5;">
                                         <img v-if="c.conversationPhoto" :src="c.conversationPhoto" alt="" style="width: 100%; height: 100%; object-fit: cover;">
-                                        <span v-else class="d-flex justify-content-center align-items-center h-100 small text-white">{{ (c.conversationName || '?').charAt(0) }}</span>
+                                        <span v-else class="fw-bold text-secondary" style="font-size: 1.1rem;">{{ (c.conversationName || '?').charAt(0).toUpperCase() }}</span>
                                     </div>
+                                    <span v-if="c.unreadCount > 0" class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                                        <span class="visually-hidden">New alerts</span>
+                                    </span>
                                 </div>
                                 
-                                
-                                <RouterLink :to="'/conversations/' + c.conversationId" class="text-decoration-none flex-grow-1 text-body py-2 pe-2 overflow-hidden" @click="closeSidebar">
+                                <RouterLink :to="'/conversations/' + c.conversationId" class="text-decoration-none flex-grow-1 text-body overflow-hidden ps-2" @click="closeSidebar" style="min-width: 0;">
     								<div class="text-truncate">
-    									<div class="d-flex justify-content-between">
-    										<span class="fw-bold text-truncate">{{ c.conversationName || 'Unknown Conversation' }}</span>
-    										<small class="text-body-secondary" style="font-size: 0.75rem;">{{ formatTime(c.lastMessageTimestamp) }}</small>
+    									<div class="d-flex justify-content-between align-items-baseline">
+    										<span class="fw-semibold text-truncate" style="font-size: 0.95rem;">{{ c.conversationName || 'Unknown' }}</span>
+    										<small class="text-muted ms-1" style="font-size: 0.7rem;">{{ formatTime(c.lastMessageTimestamp) }}</small>
     									</div>
-    									<div class="d-flex justify-content-between align-items-center">
-    										<div class="small text-body-secondary text-truncate" v-if="c.lastMessagePreview" style="max-width: 80%;">{{ c.lastMessagePreview }}</div>
-    										<span v-if="c.unreadCount > 0" class="badge bg-danger rounded-pill">{{ c.unreadCount }}</span>
+    									<div class="d-flex justify-content-between align-items-center mt-1">
+    										<div class="small text-secondary text-truncate" v-if="c.lastMessagePreview" style="max-width: 90%; font-size: 0.8rem;">
+                                                {{ (c.lastMessagePreview || '').replace(/^You: /, 'You: ') }}
+                                            </div>
+                                            <span v-if="c.unreadCount > 0" class="badge bg-primary rounded-pill small" style="font-size: 0.7rem">{{ c.unreadCount }}</span>
     									</div>
     								</div>
                                 </RouterLink>
 							</div>
 						</li>
-						<li class="nav-item mt-3 px-3">
-							<a href="#" class="btn btn-primary w-100 btn-sm text-white d-flex align-items-center justify-content-center gap-2" @click.prevent="openNewChatModal">
-								<svg class="feather"><use href="/feather-sprite-v4.29.0.svg#plus-circle"/></svg>
-								New Chat
-							</a>
-						</li>
 					</ul>
-					
-					<div class="mt-auto p-3 border-top">
-						<button @click="logout" class="btn btn-outline-danger w-100 btn-sm">
-							<svg class="feather"><use href="/feather-sprite-v4.29.0.svg#log-out"/></svg>
+                    
+                    <!-- New Chat Button Floating or Bottom -->
+					<div class="mt-auto p-3">
+						<a href="#" class="btn btn-primary w-100 text-white d-flex align-items-center justify-content-center gap-2 shadow-sm py-2" @click.prevent="openNewChatModal" style="border-radius: 12px;">
+							<svg class="feather"><use href="/feather-sprite-v4.29.0.svg#plus"/></svg>
+							Start New Chat
+						</a>
+                         <button @click="logout" class="btn btn-link w-100 btn-sm text-muted mt-2 text-decoration-none" style="font-size: 0.8rem;">
 							Log out
 						</button>
 					</div>
 				</div>
 			</nav>
 
-			<main class="col-md-9 ms-sm-auto col-lg-10 h-100 p-0">
+			<main class="col-md-9 ms-sm-auto col-lg-9 h-100 p-0">
 				<RouterView @profile-updated="fetchMyProfile" />
 			</main>
 		</div>

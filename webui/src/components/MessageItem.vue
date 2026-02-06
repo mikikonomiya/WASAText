@@ -20,7 +20,7 @@ export default {
     <div class="d-flex w-100 position-relative group-message-container" :class="{'justify-content-end': isMe, 'justify-content-start': !isMe}">
         
         <!-- Action Buttons (Hidden by default, shown on hover) -->
-        <div class="action-buttons opacity-0 align-self-center mx-2 order-1 d-flex gap-1" :class="{'order-first': isMe, 'order-last': !isMe}">
+        <div class="action-buttons opacity-0 align-self-center mx-2 d-flex gap-1" :class="{'order-last': !isMe}">
             <button class="btn btn-sm btn-light rounded-circle shadow-sm" @click="$emit('toggle-star', message)" :title="message.isStarred ? 'Unstar' : 'Star'">
                  <svg class="feather" style="width: 14px; height: 14px;" :class="{'text-warning': message.isStarred}" :style="{ fill: message.isStarred ? 'currentColor' : 'none' }">
                     <use href="/feather-sprite-v4.29.0.svg#star"/>
@@ -51,7 +51,7 @@ export default {
             </button>
         </div>
 
-        <div class="card shadow-sm mb-1 position-relative" style="max-width: 75%; min-width: 60px;" 
+        <div class="card shadow-sm mb-1 position-relative" style="max-width: 75%; min-width: 80px;" 
              :class="{'bg-myself border-0': isMe, 'bg-message-received': !isMe, 'border border-primary border-3': selected}"
              @click="selectable ? $emit('toggle-selection', message) : null"
              :style="selectable ? 'cursor: pointer;' : ''">
@@ -82,7 +82,7 @@ export default {
                 </div>
 
                 <!-- Text Content (Caption or Message) -->
-                <p v-if="message.textContent" class="mb-1 text-break">{{ message.textContent }}</p>
+                <p v-if="message.textContent" class="mb-0 text-break" style="line-height: 1.4;">{{ message.textContent }}</p>
 
                 <!-- Reactions Display -->
                 <div v-if="message.reactions && message.reactions.length > 0" class="d-flex flex-wrap gap-1 mt-1 mb-1">
@@ -102,7 +102,7 @@ export default {
                 </div>
 
                 <!-- Timestamp & Checkmarks & Star -->
-                <div class="d-flex justify-content-end align-items-center gap-1">
+                <div class="d-flex justify-content-end align-items-center gap-1" style="margin-top: 2px;">
                     
                     <!-- Star Indicator -->
                     <svg v-if="message.isStarred" class="feather text-warning me-1" style="width: 12px; height: 12px; fill: currentColor;"><use href="/feather-sprite-v4.29.0.svg#star"/></svg>
@@ -136,12 +136,12 @@ export default {
 }
 /* Custom background for sent messages */
 .bg-myself {
-    background-color: #0b2d52 !important; /* Dark Blue */
-    color: white !important;
+    background-color: var(--msg-me-bg) !important;
+    color: var(--msg-me-text) !important;
 }
 
-/* Reduce vertical padding for short messages, but keep bottom padding comfortable */
+/* Increase padding for comfortable reading but not too large */
 .card-body.p-2 {
-    padding: 0.35rem 0.5rem 0.5rem 0.5rem !important;
+    padding: 0.5rem 0.8rem 0.6rem 0.8rem !important;
 }
 </style>
