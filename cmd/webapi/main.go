@@ -32,6 +32,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"wasatext/service/api"
 	"wasatext/service/database"
@@ -89,6 +90,11 @@ func run() error {
 
 	// Start Database
 	logger.Println("initializing database support")
+	// Ensure the directory for the DB file exists
+	if err := os.MkdirAll(filepath.Dir(cfg.DB.Filename), 0755); err != nil {
+		return fmt.Errorf("creating DB directory: %w", err)
+	}
+
 	dbconn, err := sql.Open("sqlite3", cfg.DB.Filename)
 	if err != nil {
 		logger.WithError(err).Error("error opening SQLite DB")
