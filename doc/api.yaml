@@ -295,20 +295,11 @@ paths:
                   description: Username of the user to start the conversation with.
       responses:
         "200":
-          description: Conversation already exists; returns the existing id.
+          description: Conversation already exists; returns the existing conversation object.
           content:
             application/json:
               schema:
-                description: id of the existing conversation
-                type: object
-                properties:
-                  conversationId:
-                    description: conversation id
-                    type: string
-                    example: "abcs56837"
-                    minLength: 8
-                    maxLength: 32
-                    pattern: '^[a-zA-Z0-9]+$'
+                $ref: "#/components/schemas/conversation"
         "201":
           description: Conversation successfully created or retrieved.
           content:

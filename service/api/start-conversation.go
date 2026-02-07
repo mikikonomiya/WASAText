@@ -73,9 +73,20 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, ps 
 			ctx.Logger.WithError(err).Error("error encoding response")
 		}
 	} else {
-		// Status 200: Return only {"conversationId": "..."}
+		// Status 200: Return Full Object
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(map[string]string{"conversationId": convo.ID}); err != nil {
+		resp := struct {
+			ConversationId string `json:"conversationId"`
+			Name           string `json:"name,omitempty"`
+			LastMessage    string `json:"last_message"`
+			UpdatedAt      string `json:"updated_at"`
+		}{
+			ConversationId: convo.ID,
+			Name:           convo.Name,
+			LastMessage:    convo.LastMessage,
+			UpdatedAt:      convo.UpdatedAt,
+		}
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			ctx.Logger.WithError(err).Error("error encoding response")
 		}
 	}

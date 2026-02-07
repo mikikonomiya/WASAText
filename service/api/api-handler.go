@@ -41,7 +41,6 @@ func (rt *_router) Handler() http.Handler {
 	// Reactions
 	rt.router.PUT("/messages/:messageId/reactions/me", rt.wrap(rt.commentMessage))      // Matches YAML /messages/{messageId}/reactions/me PUT
 	rt.router.DELETE("/messages/:messageId/reactions/me", rt.wrap(rt.uncommentMessage)) // Matches YAML /messages/{messageId}/reactions/me DELETE
-	//rt.router.GET("/messages/:messageId/reactions", rt.wrap(rt.getMessageReactions))    // Helper, not in snippet but likely acceptable
 
 	// GROUPS
 	rt.router.POST("/groups", rt.wrap(rt.createGroup))

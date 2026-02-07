@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const PhotoPlaceholder = "[Photo]"
+
 // Matches GetConversationMessages
 func (db *appdbimpl) GetConversationMessages(conversationID string, myID string) ([]Message, error) {
 
@@ -89,7 +91,7 @@ func (db *appdbimpl) GetConversationMessages(conversationID string, myID string)
 			if replyContent.String != "" {
 				m.ReplyToText = replyContent.String
 			} else if replyPhotoSource.Valid {
-				m.ReplyToText = "[Photo]"
+				m.ReplyToText = PhotoPlaceholder
 			}
 		}
 
@@ -174,7 +176,7 @@ func (db *appdbimpl) SendMessage(conversationID string, senderID string, text st
 	if err != nil {
 		return Message{}, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// 3. Insert the message
 	newMessageID, err := GenerateNewID()
@@ -241,7 +243,7 @@ func (db *appdbimpl) SendPhotoMessage(conversationID string, senderID string, ph
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	msgID, err := GenerateNewID()
 	if err != nil {
@@ -257,9 +259,9 @@ func (db *appdbimpl) SendPhotoMessage(conversationID string, senderID string, ph
 	}
 
 	// Update Conversation with preview "[Photo] caption"
-	preview := "[Photo]"
+	preview := PhotoPlaceholder
 	if caption != "" {
-		preview = "[Photo] " + caption
+		preview = PhotoPlaceholder + " " + caption
 	}
 	_, err = tx.Exec(`
 		UPDATE conversations SET last_message = ?, updated_at = CURRENT_TIMESTAMP WHERE conversation_id = ?`,
@@ -443,7 +445,7 @@ func (db *appdbimpl) ForwardMessage(myID string, sourceMsgID string, destConvID 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// 3. Insert Forwarded Message
 	newMessageID, err := GenerateNewID()
@@ -462,9 +464,9 @@ func (db *appdbimpl) ForwardMessage(myID string, sourceMsgID string, destConvID 
 	// 4. Update Destination Conversation Metadata
 	preview := content
 	if kind == "image" {
-		preview = "[Photo]"
+		preview = PhotoPlaceholder
 		if content != "" {
-			preview = "[Photo] " + content
+			preview = PhotoPlaceholder + " " + content
 		}
 	}
 	_, err = tx.Exec(`
@@ -517,9 +519,9 @@ func (db *appdbimpl) updateConversationPreview(conversationID string) error {
 	// 2. Format preview
 	preview := "..."
 	if lastKind.String == "image" {
-		preview = "[Photo]"
+		preview = PhotoPlaceholder
 		if lastMsg.Valid && lastMsg.String != "" {
-			preview = "[Photo] " + lastMsg.String
+			preview = PhotoPlaceholder + " " + lastMsg.String
 		}
 	} else if lastMsg.Valid {
 		preview = lastMsg.String
@@ -706,7 +708,7 @@ func (db *appdbimpl) UnreactToMessage(messageID string, myID string) error {
 		return err
 	}
 
-	// Check if we actually deleted anything
+	// Check if a row was actually deleted
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		return err
