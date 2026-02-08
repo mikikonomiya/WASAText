@@ -31,7 +31,6 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 
 	// 3. Get the file from the form
-	// "photo" matches the name in your YAML (properties: photo)
 	file, _, err := r.FormFile("photo")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -66,8 +65,6 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 6. Update Database
-	//  tell the DB: "User X now has photo 'X.png'"
 	// 6. Update Database
 	//  tell the DB: "User X now has photo 'X.png'"
 	err = rt.db.SetUserPhoto(userID, filename)

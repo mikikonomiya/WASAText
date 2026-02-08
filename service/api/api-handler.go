@@ -19,7 +19,7 @@ func (rt *_router) Handler() http.Handler {
 	// CONVERSATIONS
 	rt.router.GET("/conversations", rt.wrap(rt.getMyConversations))
 	rt.router.POST("/conversations", rt.wrap(rt.startConversation))
-	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversationMessages)) // Matches YAML /conversations/{conversationId} GET
+	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversationMessages))
 	rt.router.DELETE("/conversations/:conversationId", rt.wrap(rt.deleteConversation))
 	rt.router.PUT("/conversations/:conversationId/seen", rt.wrap(rt.setConversationSeen))
 
@@ -30,17 +30,16 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.GET("/conversations/:conversationId/messages/starred", rt.wrap(rt.getConvStarredMessages))
 
 	rt.router.GET("/messages", rt.wrap(rt.searchMessages))
-	rt.router.POST("/messages/forwarded", rt.wrap(rt.forwardMessage)) // Matches YAML /messages/forwarded POST
+	rt.router.POST("/messages/forwarded", rt.wrap(rt.forwardMessage))
 	rt.router.DELETE("/messages/:messageId", rt.wrap(rt.deleteMessage))
 
 	// STARRED & REACTIONS
-	rt.router.GET("/messages/starred", rt.wrap(rt.getAllStarredMessages)) // Matches YAML /messages/starred GET
+	rt.router.GET("/messages/starred", rt.wrap(rt.getAllStarredMessages))
 	rt.router.PUT("/messages/:messageId/star", rt.wrap(rt.starMessage))
 	rt.router.DELETE("/messages/:messageId/star", rt.wrap(rt.unstarMessage))
 
-	// Reactions
-	rt.router.PUT("/messages/:messageId/reactions/me", rt.wrap(rt.commentMessage))      // Matches YAML /messages/{messageId}/reactions/me PUT
-	rt.router.DELETE("/messages/:messageId/reactions/me", rt.wrap(rt.uncommentMessage)) // Matches YAML /messages/{messageId}/reactions/me DELETE
+	rt.router.PUT("/messages/:messageId/reactions/me", rt.wrap(rt.commentMessage))
+	rt.router.DELETE("/messages/:messageId/reactions/me", rt.wrap(rt.uncommentMessage))
 
 	// GROUPS
 	rt.router.POST("/groups", rt.wrap(rt.createGroup))

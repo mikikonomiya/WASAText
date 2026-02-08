@@ -110,8 +110,6 @@ type appdbimpl struct {
 	c *sql.DB
 }
 
-// ... (existing code) ...
-
 type ReactionDetail struct {
 	Username string `json:"username"`
 	Emoji    string `json:"emoji"`
@@ -191,7 +189,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating stars table: %w", err)
 	}
 
-	// 6. Deleted Messages Table
+	// 6. Deleted Messages Table (for "delete for me" functionality)
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS deleted_messages (
         user_id TEXT NOT NULL,
         message_id TEXT NOT NULL,

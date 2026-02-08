@@ -29,7 +29,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter
 		return
 	}
 
-	// 2) validate input (length, regex patter with alphanumeic+dot+underscore)
+	// 2) validate input (length, regex pattern with alphanumeic+dot+underscore)
 	if len(req.Name) < 3 || len(req.Name) > 16 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
