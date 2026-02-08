@@ -123,6 +123,7 @@ func run() error {
 	serverErrors := make(chan error, 1)
 
 	// Create the API router
+	// 1. initialize backend logic
 	apirouter, err := api.New(api.Config{
 		Logger:   logger,
 		Database: db,
@@ -131,8 +132,10 @@ func run() error {
 		logger.WithError(err).Error("error creating the API server instance")
 		return fmt.Errorf("creating the API server instance: %w", err)
 	}
+	// 2. create router
 	router := apirouter.Handler()
 
+	// 3. add frontend
 	router, err = registerWebUI(router)
 	if err != nil {
 		logger.WithError(err).Error("error registering web UI handler")
