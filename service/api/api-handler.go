@@ -52,5 +52,8 @@ func (rt *_router) Handler() http.Handler {
 	// STATIC IMAGES
 	rt.router.ServeFiles("/images/*filepath", http.Dir("./data/images"))
 
+	// Special routes
+	rt.router.GET("/liveness", rt.wrap(rt.liveness))
+
 	return rt.router
 }
