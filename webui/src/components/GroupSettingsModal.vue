@@ -21,7 +21,7 @@ export default {
             newMemberQuery: "",
             searchResults: [],
             
-            // New for Starred & Photos
+            // For Starred & Photos
             activeTab: 'members', // 'members', 'starred', 'photos'
             starredMessages: [],
             starredLoading: false,
@@ -32,8 +32,9 @@ export default {
         }
     },
     async mounted() {
-        // ALWAYS try to fetch group details. If it succeeds, it IS a group.
-        // If it fails (404), it is a DM. This fixes the issue where the list might have wrong isGroup flag.
+        // ALWAYS try to fetch group details. 
+        // If it succeeds, it IS a group.
+        // If it fails (404), it is a DM.
         this.loading = true;
         try {
             await this.fetchDetails();

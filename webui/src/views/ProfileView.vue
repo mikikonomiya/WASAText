@@ -30,7 +30,7 @@ export default {
         async fetchStarredMessages() {
             this.starredLoading = true;
             try {
-                const response = await this.$axios.get("/starred");
+                const response = await this.$axios.get("/messages/starred");
                 this.starredMessages = response.data || [];
             } catch (e) {
                 console.error("Failed to fetch starred messages", e);
@@ -44,19 +44,7 @@ export default {
                 // Get my own profile
                 const response = await this.$axios.get(`/users/${this.username}`);
                 this.identifier = response.data.identifier;
-                // photo_id from API -> construct URL
-                // Backend sends `photo_id` field in User struct (from search/get user). Wait, verifying User struct.
-                // In database.go: User struct has { identifier, username }. It DOES NOT have photo_id in the JSON response?
-                // Let's check `get-user-profile.go` and `database.go`. 
-                // Step 1643 view of database.go lines 228-232 shows User struct:
-                // type User struct { Identifier string, Username string }
-                // It seems the User struct returned by Search/Get might NOT have the photo!?
-                // BUT `users` table has `photo_id`.
-                // I might need to update the User struct in Go if I want to display the photo here. 
-                // OR I can use the conversation photo logic if I had a chat with myself? No.
                 
-                // Let's assume for now I might need to fix the backend to return photo_id. 
-                // I'll write the frontend to expect it, and if it's missing, I'll fix the backend in the next step.
                 if (response.data.photo_id) {
                      this.photoUrl = "/images/" + response.data.photo_id;
                 } else {
@@ -96,8 +84,6 @@ export default {
                 this.success = "Username updated!";
                 this.isEditingName = false;
                 
-                // Refresh full app state if possible (router reload?)
-                // Ideally propagate to App.vue via event or just reload page
                 this.$emit('profile-updated');
                 
             } catch (e) {
@@ -118,6 +104,8 @@ export default {
             if (!file) return;
             
             this.selectedFile = file;
+            // Create a preview of the selected image.
+            // Use a temporary browser URL.
             this.uploadPreview = URL.createObjectURL(file);
             this.isUploadingPhoto = true;
             this.error = null;
@@ -269,10 +257,7 @@ export default {
                                         <small class="text-muted" style="font-size: 0.7rem;">{{ formatDate(msg.messageTimestamp) }}</small>
                                     </div>
                                     <div class="text-break small">{{ msg.textContent || (msg.kind === 'image' ? '[Photo]' : 'Message') }}</div>
-                                    <div v-if="msg.photoSource" class="mt-2">
-                                        <img :src="'/images/' + msg.photoSource" style="height: 100px; border-radius: 4px; object-fit: cover; cursor: pointer;"
-                                             @click="selectedImage = '/images/' + msg.photoSource">
-                                    </div>
+
                                 </div>
                             </div>
                         </div>

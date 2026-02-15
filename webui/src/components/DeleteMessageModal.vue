@@ -1,7 +1,7 @@
 <script>
 export default {
-    props: ['message', 'isMe'],
-    emits: ['close', 'confirm'],
+    props: ['message', 'isMe'], // input from parent
+    emits: ['close', 'confirm'], // output to parent
     methods: {
         confirm(scope) {
             this.$emit('confirm', this.message.messageId, scope);

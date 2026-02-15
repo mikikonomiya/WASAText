@@ -39,7 +39,7 @@ export default {
 				this.$router.push('/');
 			} catch (e) {
 				console.error(e);
-				this.error = e.response ? e.response.data : 'Login failed';
+				this.error = (e.response && e.response.data) ? e.response.data : 'Login failed (Bad Request)';
 			}
 			this.loading = false;
 		},

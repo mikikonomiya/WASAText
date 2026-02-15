@@ -29,7 +29,7 @@ export default {
         },
         confirm() {
             if (this.selectedConvId) {
-                this.$emit('confirm', this.selectedConvId);
+                this.$emit('confirm', this.selectedConvId); // emit the selected conversation ID to the parent component
             }
         }
     }

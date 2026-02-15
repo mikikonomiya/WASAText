@@ -13,6 +13,7 @@ instance.interceptors.request.use(
 		}
 		return config;
 	},
+	// to handle errors happening while trying to send a request
 	(error) => {
 		return Promise.reject(error);
 	}

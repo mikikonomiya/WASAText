@@ -10,6 +10,7 @@ export default {
         NewChatModal,
         GroupSettingsModal
     },
+    // variables defined by data() are called the 'reactive state'
 	data() {
 		return {
 			username: localStorage.getItem("username"),

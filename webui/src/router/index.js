@@ -13,12 +13,12 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-	const publicPages = ['/login'];
-	const authRequired = !publicPages.includes(to.path);
-	const loggedIn = localStorage.getItem('token');
+	const publicPages = ['/login']; // pages that do not require login
+	const authRequired = !publicPages.includes(to.path); // if the page requires login
+	const loggedIn = localStorage.getItem('token'); // if the user is logged in
 
 	if (authRequired && !loggedIn) {
-		next('/login');
+		next('/login'); // redirect
 	} else {
 		next();
 	}

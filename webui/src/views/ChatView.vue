@@ -110,7 +110,7 @@ export default {
         setReply(message) {
             this.replyingTo = message;
             this.$nextTick(() => {
-                document.querySelector('input[type="text"]').focus();
+                this.$refs.messageInput?.focus();
             });
         },
         clearReply() {
@@ -162,7 +162,7 @@ export default {
                     });
                 }
 
-                // If forwarding to CURRENT chat, refresh; otherwise, maybe show toast?
+                // If forwarding to CURRENT chat, refresh;
                 if (destConvId === this.conversationId) {
                     this.refresh();
                 }
@@ -213,16 +213,9 @@ export default {
         
         // Reaction Logic
         async toggleReaction(message, emoji) {
-            // Check if I already reacted with ALL emojis? No, just check if I reacted with THIS emoji.
-            // But the backend API is PUT /reactions/me (which might imply one reaction per message? Or one per emoji?)
-            // The DB schema has PK (user_id, message_id, emoji) -> wait, looking at schema provided earlier...
-            // Step Id: 1251 shows: `PRIMARY KEY (user_id, message_id)` implies ONE EMOJI PER USER PER MESSAGE!
-            // Wait, let me double check the database schema in Step 1251.
-            // Line 202: PRIMARY KEY (user_id, message_id).
-            // Line 201: emoji TEXT NOT NULL.
-            // YES. A user can only have ONE reaction per message.
+            // A user can only have ONE reaction per message.
             
-            // So if I click a DIFFERENT emoji, it replaces.
+            // If I click a DIFFERENT emoji, it replaces.
             // If I click the SAME emoji, it should remove it (toggle).
             
             // Find my current reaction
@@ -276,6 +269,7 @@ export default {
         async sendPhoto() {
             if (!this.selectedFile) return;
 
+            // FormData is a special JavaScript object for sending Binary Files.
             let formData = new FormData();
             formData.append("photo", this.selectedFile);
             
@@ -334,7 +328,7 @@ export default {
         }
 	},
     mounted() {
-        // Poll for new messages
+        // Poll for new messages, stored in the pollInterval variable.
         this.pollInterval = setInterval(() => {
             this.refresh();
         }, 3000);
@@ -449,7 +443,7 @@ export default {
                 </button>
                 <input type="file" ref="fileInput" class="d-none" accept="image/*" @change="onFileSelected">
                 
-                <input type="text" v-model="newMessage" class="form-control border-0 bg-transparent shadow-none" placeholder="Type a message..." :required="!selectedFile" style="font-size: 0.95rem;">
+                <input type="text" ref="messageInput" v-model="newMessage" class="form-control border-0 bg-transparent shadow-none" placeholder="Type a message..." :required="!selectedFile" style="font-size: 0.95rem;">
                 
                 <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">
                     <svg class="feather" style="width: 18px; height: 18px;"><use href="/feather-sprite-v4.29.0.svg#send"/></svg>
